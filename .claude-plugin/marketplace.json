@@ -1,0 +1,13 @@
+{
+  "name": "claude-mods",
+  "owner": { "name": "Tarl Raney" },
+  "metadata": { "description": "Mods for Claude Code by Tarl Raney" },
+  "plugins": [
+    {
+      "name": "usage-bar",
+      "source": "./plugins/usage-bar",
+      "description": "Band above the prompt showing Session, Weekly and Fable 5.1 usage",
+      "version": "0.1.0"
+    }
+  ]
+}
