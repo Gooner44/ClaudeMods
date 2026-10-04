@@ -81,7 +81,7 @@ export function asText(me: BoardCard | null, others: BoardCard[], now: number): 
     lines.push(head)
     if (c.task) lines.push(`  - on: ${c.task}`)
     if (c.status === 'working' && c.activity) lines.push(`  - now: ${c.activity}`)
-    for (const a of c.agents) lines.push(`  - agent ${a.label} (${a.type}): ${a.status}${a.activity ? `, ${a.activity}` : ''}`)
+    for (const a of c.agents) lines.push(`  - agent ${a.label}: ${a.job || a.type} (${a.status}${a.activity ? `, ${a.activity}` : ''})`)
   }
   if (me) card(me, true)
   for (const c of others) card(c, false)

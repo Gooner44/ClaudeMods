@@ -36,13 +36,17 @@ On the desktop app the meters are solid bars; in the terminal they're thin `━�
 
 See every Claude Code session running on this PC, such as Claude, Aesop and background jobs: what each is working on, what it's doing right now, and the agents it has running.
 
+- **The band above the prompt:** a little Clawd character for every session and every agent it's running. A character walks while it works and stands (blinking now and then) while idle. Next to each one:
+  - its name and state (working for how long, or idle)
+  - its job: the session's current task, or the agent's task description
+  - the tool it's calling right now
+  - the model, or which session an agent belongs to
+
+  This session comes first, then Claude, Aesop and the others, then background jobs. The band sits under usage-bar's meters when both are installed. Collapse it with `[-]` or ctrl+x ctrl+a.
 - **Status line:** the other sessions at a glance, e.g. `Aesop working · 1 agent | 2 jobs`.
-- **`/staff`:** opens a "Staff board" pane and posts the board as text, which is the view on the phone. For each session it shows:
-  - working or idle, and for how long
-  - the model
-  - the task (the first line of its current prompt)
-  - the tool it's calling now
-  - one line per running agent, with that agent's own latest tool call
+- **`/staff`:** posts the same board as text. Remote Control on the phone draws no band, so this is the phone's view.
+
+The characters are pixel art in the terminal. The desktop app shows a small block glyph instead.
 
 How it works: each session writes a small card to `~/.claude/staff-board/<session id>.json` every few seconds, and reads everyone else's. A card that hasn't been updated for 90 seconds counts as closed. Sessions are named by the `CLAUDE_STAFF` (or `CLAUDE_TASK`) environment variable; unnamed ones show as `Session <id>`. Background (`-p`) runs write their card but don't read the board.
 

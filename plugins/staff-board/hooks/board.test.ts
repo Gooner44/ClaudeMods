@@ -41,12 +41,12 @@ test('the status line and the text summary name the others and their agents', ()
     status: 'working',
     since: NOW - 180_000,
     task: 'SunYard round',
-    agents: [{ id: 'x', label: 'find tiles', type: 'Explore', status: 'running', activity: 'Grep tile' }],
+    agents: [{ id: 'x', label: 'Explore', job: 'find tiles', type: 'Explore', status: 'running', activity: 'Grep tile' }],
   })
   const job = card({ session: 'j', name: 'Quinn', isJob: true })
   expect(summary([aesop, job])).toBe('Aesop working · 1 agent | 1 job')
   expect(summary([])).toBeUndefined()
   const text = asText(card({ session: 'me' }), [aesop], NOW)
   expect(text).toContain('**Aesop**: working 3m')
-  expect(text).toContain('agent find tiles (Explore): running, Grep tile')
+  expect(text).toContain('agent Explore: find tiles (running, Grep tile)')
 })

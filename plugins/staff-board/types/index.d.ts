@@ -3,6 +3,7 @@
 export type BoardAgent = {
   id: string
   label: string
+  job: string
   type: string
   status: string
   activity?: string

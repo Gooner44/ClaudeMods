@@ -155,6 +155,9 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
+    // Whatever the plugins beneath draw (staff-board's characters) goes under the meters, so
+    // several mods share the band.
+    const below = await next(e)
 
     const items = slots(await read($, windows))
     const status = await read($, account)
@@ -222,8 +225,11 @@ export const register: Register = on => {
     }
 
     return (
-      <Box flexDirection={isStacked ? 'column' : 'row'} width="100%" columnGap={gap} rowGap={isStacked ? 1 : 0}>
-        {items.map(card)}
+      <Box flexDirection="column" width="100%" rowGap={1}>
+        <Box flexDirection={isStacked ? 'column' : 'row'} width="100%" columnGap={gap} rowGap={isStacked ? 1 : 0}>
+          {items.map(card)}
+        </Box>
+        {below}
       </Box>
     )
   })
