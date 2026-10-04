@@ -48,7 +48,10 @@ async function flush($: EngineInterface, force = false) {
       status: a.status,
       activity: agentActivity[a.id],
     }))
-  card = { ...card, agents, updatedAt: now }
+  // A job is a session nothing draws on (a claude -p run); the desktop app and the phone attach
+  // surfaces, so their sessions count as people-facing even when the SDK started them.
+  const isJob = (await $.session.surfaces()).length === 0
+  card = { ...card, agents, isJob, updatedAt: now }
   isDirty = false
   lastWrite = now
   await update($, me, () => card)
@@ -111,7 +114,7 @@ export const register: Register = on => {
     card = {
       session,
       name: staff || task || `Session ${session.slice(0, 4)}`,
-      isJob: !e.isInteractive,
+      isJob: e.surface === null,
       model: await $.session.model(),
       cwd: e.cwd,
       status: 'idle',
@@ -122,13 +125,12 @@ export const register: Register = on => {
     await flush($, true)
 
     $.clock.every(FLUSH_MS, () => void flush($))
-    // A background job only reports; the people-facing sessions read and draw the board too.
-    if (e.isInteractive) {
-      await $.command.register({ name: 'staff', description: 'List every session on this PC and the agents each is running' })
-      void readOthers($)
-      $.clock.every(READ_MS, () => void readOthers($))
-      $.clock.every(FRAME_MS, () => void animate($))
-    }
+    // Every session reads and draws the board: one started by the desktop app or the SDK is not
+    // interactive yet still has a person watching. A -p job reads a folder every 5 s and draws nothing.
+    await $.command.register({ name: 'staff', description: 'List every session on this PC and the agents each is running' })
+    void readOthers($)
+    $.clock.every(READ_MS, () => void readOthers($))
+    $.clock.every(FRAME_MS, () => void animate($))
     return result
   })
 
