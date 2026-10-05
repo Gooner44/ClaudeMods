@@ -52,6 +52,11 @@ export const taskOf = (text: string) => {
   return clip(firstLine(bare) || firstLine(text), 100)
 }
 
+// What the plugins beneath drew in the band, or nothing. The engine draws nothing of its own
+// there, and its placeholder (type 'engine'), embedded in a tree, makes the desktop app drop
+// the whole band; so the innermost mod leaves it out.
+export const beneath = <T extends { type: string }>(drawn: T): T | null => (drawn.type === 'engine' ? null : drawn)
+
 // Cards read from the folder, newest kept per session, live ones only; standing sessions
 // (Claude, Aesop) first by name, then background jobs, newest first.
 export function liveCards(cards: BoardCard[], now: number, own?: string): BoardCard[] {

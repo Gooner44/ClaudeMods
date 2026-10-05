@@ -156,8 +156,10 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     // Whatever the plugins beneath draw (staff-board's characters) goes under the meters, so
-    // several mods share the band.
+    // several mods share the band. The engine draws nothing of its own here, and embedding its
+    // placeholder (type 'engine') in the tree makes the desktop app drop the whole band.
     const below = await next(e)
+    const beneath = below.type === 'engine' ? null : below
 
     const items = slots(await read($, windows))
     const status = await read($, account)
@@ -229,7 +231,7 @@ export const register: Register = on => {
         <Box flexDirection={isStacked ? 'column' : 'row'} width="100%" columnGap={gap} rowGap={isStacked ? 1 : 0}>
           {items.map(card)}
         </Box>
-        {below}
+        {beneath}
       </Box>
     )
   })

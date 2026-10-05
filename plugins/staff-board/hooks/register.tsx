@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
-import { ago, asText, describe, liveCards, summary, taskOf } from './board'
+import { ago, asText, beneath, describe, liveCards, summary, taskOf } from './board'
 import { DIM, GLYPH, ORANGE, SPRITE_COLUMNS, SPRITE_ROWS, cells, frameFor } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
@@ -171,7 +171,7 @@ export const register: Register = on => {
   // The band: whatever the plugins beneath drew (usage-bar's meters), then the board.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
-    const below = await next(e)
+    const below = beneath(await next(e))
     const self = await read($, me)
     const list = await read($, others)
     const now = await $.clock.now()

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { asText, describe, liveCards, summary, taskOf } from './board'
+import { asText, beneath, describe, liveCards, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -69,4 +69,10 @@ test('the job skips the system-reminder blocks the desktop app puts in front of 
   expect(taskOf('<task>\nRun the nightly sync\n</task>\n')).toBe('Run the nightly sync')
   expect(taskOf('\nplain prompt\n')).toBe('plain prompt')
   expect(taskOf('<system-reminder>only a reminder</system-reminder>')).toBe('<system-reminder>only a reminder</system-reminder>')
+})
+
+test('the band keeps what another mod drew beneath and drops the engine placeholder', () => {
+  const tree = { type: 'Box', children: [] }
+  expect(beneath(tree)).toBe(tree)
+  expect(beneath({ type: 'engine', ref: 1 })).toBeNull()
 })
