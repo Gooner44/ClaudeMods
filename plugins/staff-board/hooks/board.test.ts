@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { asText, describe, liveCards, summary } from './board'
+import { asText, describe, liveCards, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -49,4 +49,24 @@ test('the status line and the text summary name the others and their agents', ()
   const text = asText(card({ session: 'me' }), [aesop], NOW)
   expect(text).toContain('**Aesop**: working 3m')
   expect(text).toContain('agent Explore: find tiles (running, Grep tile)')
+})
+
+test('the job skips the system-reminder blocks the desktop app puts in front of a prompt', () => {
+  const prompt = [
+    '<system-reminder>',
+    'Codebase and user instructions are shown below.',
+    '',
+    'Contents of CLAUDE.md:',
+    '</system-reminder>',
+    '<system-reminder>',
+    'The user started this session without choosing a project folder.',
+    '</system-reminder>',
+    '',
+    'Fix the staff board so the job is the prompt, not the reminder.',
+    'Then bump the version.',
+  ].join('\n')
+  expect(taskOf(prompt)).toBe('Fix the staff board so the job is the prompt, not the reminder.')
+  expect(taskOf('<task>\nRun the nightly sync\n</task>\n')).toBe('Run the nightly sync')
+  expect(taskOf('\nplain prompt\n')).toBe('plain prompt')
+  expect(taskOf('<system-reminder>only a reminder</system-reminder>')).toBe('<system-reminder>only a reminder</system-reminder>')
 })

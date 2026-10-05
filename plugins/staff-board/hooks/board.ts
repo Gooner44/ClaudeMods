@@ -40,8 +40,17 @@ export function describe(tool: string, input: Record<string, unknown>): string {
   }
 }
 
-// The first line of a prompt, as the task a session is on.
-export const taskOf = (text: string) => clip(text.split('\n').find(l => l.trim()) ?? '', 100)
+// The first line of a prompt, as the task a session is on. Desktop-app sessions put
+// <system-reminder>…</system-reminder> blocks in front of what the person typed, and the text
+// itself may sit inside a <tag>…</tag> wrapper; the reminders are not the job, so they go whole,
+// then any line that is only a tag. The raw text stands in when nothing else is left.
+const firstLine = (s: string) => s.split('\n').find(l => l.trim()) ?? ''
+export const taskOf = (text: string) => {
+  const bare = text
+    .replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/g, '')
+    .replace(/^[ \t]*<\/?[a-zA-Z][\w-]*\b[^>]*>[ \t]*$/gm, '')
+  return clip(firstLine(bare) || firstLine(text), 100)
+}
 
 // Cards read from the folder, newest kept per session, live ones only; standing sessions
 // (Claude, Aesop) first by name, then background jobs, newest first.
