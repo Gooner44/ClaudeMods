@@ -1,7 +1,9 @@
 {
   "name": "staff-board",
-  "version": "0.2.3",
-  "description": "See every Claude Code session on this PC (Claude, Aesop, background jobs), what each is doing and the agents it is running",
-  "author": { "name": "Tarl Raney" },
+  "version": "0.3.1",
+  "description": "A compact band of your sessions (Claude, Aesop, named desktop sessions and what they spawn): Clawds coloured by model, glowing by effort, each with its current work",
+  "author": {
+    "name": "Tarl Raney"
+  },
   "types": "./types/index.d.ts"
 }

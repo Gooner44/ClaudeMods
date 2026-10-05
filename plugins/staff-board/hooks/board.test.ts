@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { asText, beneath, describe, liveCards, summary, taskOf } from './board'
+import { asText, beneath, describe, desktopMeta, liveCards, roster, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -75,4 +75,25 @@ test('the band keeps what another mod drew beneath and drops the engine placehol
   const tree = { type: 'Box', children: [] }
   expect(beneath(tree)).toBe(tree)
   expect(beneath({ type: 'engine', ref: 1 })).toBeNull()
+})
+
+test('the band keeps staff, named sessions and what they spawned, and drops the rest', () => {
+  const me = card({ session: 'm', name: 'Claude_Control', desktopId: 'local_m', isNamed: true })
+  const list = [
+    card({ session: 'a', name: 'Aesop', staff: true }),
+    card({ session: 'j', name: 'Claude', staff: true, isJob: true }),
+    card({ session: 'r', name: 'Random question', desktopId: 'local_r' }),
+    card({ session: 'k', name: 'Fix the band', desktopId: 'local_k', spawnedFrom: 'local_m' }),
+    card({ session: 'g', name: 'Grandchild', spawnedFrom: 'local_k' }),
+    card({ session: 'x', name: 'Spawned by random', spawnedFrom: 'local_r' }),
+  ]
+  expect(roster(list, me).map(c => c.name)).toEqual(['Aesop', 'Fix the band', 'Grandchild'])
+})
+
+test('desktop metadata counts a title as named only when the app did not choose it', () => {
+  const meta = (o: object) => JSON.stringify({ sessionId: 'local_1', cliSessionId: 's', ...o })
+  expect(desktopMeta(meta({ title: 'Claude_Control', titleSource: 'tool' }), 's')?.isNamed).toBe(true)
+  expect(desktopMeta(meta({ title: 'Reload plugins', titleSource: 'auto' }), 's')?.isNamed).toBe(false)
+  expect(desktopMeta(meta({ spawnedFrom: { sessionId: 'local_0' } }), 's')?.spawnedFrom).toBe('local_0')
+  expect(desktopMeta(meta({}), 'other')).toBe(null)
 })

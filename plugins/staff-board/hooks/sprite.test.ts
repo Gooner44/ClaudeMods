@@ -1,15 +1,15 @@
 import { expect, test } from 'claude-code/testing'
 
-import { ORANGE, SPRITE_COLUMNS, SPRITE_ROWS, cells, frameFor } from './sprite'
+import { SPRITE_COLUMNS, SPRITE_ROWS, cells, frameFor, modelColor, modelName, svgClawd } from './sprite'
 
-test('every frame packs to one full Raster of cells', () => {
+test('every terminal frame packs to one full Raster of cells', () => {
   const bytes = SPRITE_COLUMNS * SPRITE_ROWS * 3 * 4
   for (let tick = 0; tick < 16; tick++) {
     for (const isWorking of [true, false]) {
       const frame = frameFor(isWorking, tick, 3)
       expect(frame.length).toBe(SPRITE_ROWS * 2)
       for (const row of frame) expect(row.length).toBe(SPRITE_COLUMNS)
-      expect(cells(frame, ORANGE).length).toBe(Math.ceil(bytes / 3) * 4)
+      expect(cells(frame, 0xd77757).length).toBe(Math.ceil(bytes / 3) * 4)
     }
   }
 })
@@ -17,4 +17,20 @@ test('every frame packs to one full Raster of cells', () => {
 test('a working sprite moves and an idle one mostly stands still', () => {
   expect(frameFor(true, 0, 0)).not.toEqual(frameFor(true, 1, 0))
   expect(frameFor(false, 1, 0)).toEqual(frameFor(false, 2, 0))
+})
+
+test('models get their own colour and a short name', () => {
+  expect(modelColor('claude-opus-5-5')).not.toBe(modelColor('claude-fable-5-1'))
+  expect(modelName('claude-fable-5-1')).toBe('Fable 5.1')
+  expect(modelName('claude-haiku-4-5-20251001')).toBe('Haiku 4.5')
+})
+
+test('the SVG glows by effort and flames only at ultracode', () => {
+  const svg = (effort?: string) => svgClawd({ model: 'opus', effort, isWorking: true, seed: 1, title: 'a <b>' })
+  expect(svg(undefined)).not.toContain('feGaussianBlur')
+  expect(svg('low')).toContain('opacity="0.3"')
+  expect(svg('max')).not.toContain('radialGradient')
+  expect(svg('ultracode')).toContain('radialGradient')
+  expect(svg('high')).toContain('a &#60;b&#62;')
+  expect(svg('high').length).toBeLessThan(131072)
 })

@@ -102,3 +102,52 @@ export function asText(me: BoardCard | null, others: BoardCard[], now: number): 
   if (!others.length) lines.push('No other sessions are running.')
   return lines.join('\n')
 }
+
+// The sessions the band shows: the standing staff (Claude, Aesop), any desktop session the person
+// named, this one, and every session spawned from one of those, however deep. Unnamed one-off
+// sessions and background jobs stay off the band (/staff still lists them).
+export function roster(others: BoardCard[], me: BoardCard | null): BoardCard[] {
+  const kept = others.filter(c => (c.staff && !c.isJob) || c.isNamed)
+  const anchors = new Set([me, ...kept].map(c => c?.desktopId).filter(Boolean))
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const c of others) {
+      if (kept.includes(c) || !c.spawnedFrom || !anchors.has(c.spawnedFrom)) continue
+      kept.push(c)
+      if (c.desktopId) anchors.add(c.desktopId)
+      grew = true
+    }
+  }
+  const rank = (c: BoardCard) => (c.staff ? 0 : c.isNamed ? 1 : 2)
+  return kept.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
+}
+
+// What the desktop app keeps about one of its sessions (claude-code-sessions/…/local_*.json),
+// as far as the board needs it; null when the file is someone else's or unreadable.
+export type DesktopMeta = { desktopId: string; title?: string; isNamed: boolean; spawnedFrom?: string; effort?: string }
+export function desktopMeta(text: string, session: string): DesktopMeta | null {
+  try {
+    const j = JSON.parse(text) as {
+      sessionId?: string
+      cliSessionId?: string
+      title?: string
+      titleSource?: string
+      effort?: string
+      spawnedFrom?: { sessionId?: string }
+    }
+    if (j.cliSessionId !== session || !j.sessionId) return null
+    return {
+      desktopId: j.sessionId,
+      title: j.title || undefined,
+      // 'auto' is the app's own guess; a title set by the person or at their word ('tool') counts.
+      isNamed: !!j.title && !!j.titleSource && j.titleSource !== 'auto',
+      spawnedFrom: j.spawnedFrom?.sessionId,
+      effort: j.effort,
+    }
+  } catch {
+    return null
+  }
+}
+
+// A card's content without its heartbeat, to tell whether a re-read changed anything.
+export const signature = (cards: BoardCard[]) => JSON.stringify(cards.map(c => ({ ...c, updatedAt: 0 })))
