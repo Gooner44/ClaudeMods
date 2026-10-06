@@ -28,6 +28,16 @@ So the meters need a **Claude subscription login** (Pro or Max). With an API key
 
 Nothing is sent anywhere else: the only network call is to `api.anthropic.com` with your own login.
 
+## The usage file
+
+Since 0.2.2, each reading is also saved to `~/.claude/usage-bar/usage.json`, so things outside Claude Code (a desk dashboard, a script) can show the same figures. Every session writes it, and the newest reading wins. It looks like this:
+
+```json
+{ "at": 1791321604248, "windows": [{ "kind": "five_hour", "percentUsed": 34, "resetsAt": "2026-10-06T23:00:00Z" }], "error": null }
+```
+
+`at` is milliseconds since 1970. `kind` is `five_hour` (Session), `seven_day` (Weekly), or `weekly_model:<name>` for each per-model window. `resetsAt` is UTC. Convert it before showing it to anyone. The file holds only percentages and reset times, never your login.
+
 ## Settings
 
 There are no switches yet. These are fixed in the code (`hooks/register.tsx`):

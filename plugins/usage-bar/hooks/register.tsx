@@ -102,9 +102,23 @@ let accountWindows: UsageWindow[] = []
 let lastFetch = 0
 let inFlight = false
 
+// The same figures as a file, ~/.claude/usage-bar/usage.json, for things outside Claude Code (a desk
+// dashboard) to read. Every session writes it; the newest reading wins.
+let outFile = ''
+
 async function publish($: EngineInterface) {
   const all = merge(headerWindows, accountWindows)
   await update($, windows, () => all)
+  // Found on first write rather than at session.start, so a hot reload mid-session writes too.
+  if (!outFile) {
+    const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME')) ?? ''
+    if (home) outFile = `${home.replace(/\\/g, '/')}/.claude/usage-bar/usage.json`
+  }
+  if (outFile && all.length) {
+    const status = await read($, account)
+    const body = { at: await $.clock.now(), windows: all, error: status.error ?? null }
+    await $.fs.write(outFile, JSON.stringify(body)).catch(() => undefined)
+  }
 }
 
 async function refreshAccount($: EngineInterface, force = false) {

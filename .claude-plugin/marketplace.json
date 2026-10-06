@@ -7,7 +7,7 @@
       "name": "usage-bar",
       "source": "./plugins/usage-bar",
       "description": "Band above the prompt showing Session, Weekly and Fable 5.1 usage",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     {
       "name": "staff-board",

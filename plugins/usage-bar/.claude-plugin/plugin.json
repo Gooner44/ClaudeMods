@@ -1,6 +1,6 @@
 {
   "name": "usage-bar",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Band above the prompt showing Session, Weekly and Fable 5.1 usage",
   "author": { "name": "Tarl Raney" },
   "types": "./types/index.d.ts"
