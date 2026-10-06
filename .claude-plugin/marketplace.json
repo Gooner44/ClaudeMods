@@ -12,8 +12,8 @@
     {
       "name": "staff-board",
       "source": "./plugins/staff-board",
-      "description": "See every Claude Code session on this PC, what each is doing and the agents it is running",
-      "version": "0.2.3"
+      "description": "Every Claude Code session on your PC as a little Clawd above the prompt: coloured by model, glowing by effort, with what it is doing and its agents",
+      "version": "0.3.1"
     }
   ]
 }

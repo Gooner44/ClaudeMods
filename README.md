@@ -1,8 +1,17 @@
 # ClaudeMods
 
-Mods for Claude Code, packaged as a plugin marketplace.
+Mods for Claude Code by Tarl Raney, packaged as a plugin marketplace named `claude-mods`.
+
+| Mod | What it does | Docs |
+|---|---|---|
+| **usage-bar** | A band above the prompt with your Session, Weekly and Fable 5.1 usage, and when each resets | [plugins/usage-bar/README.md](plugins/usage-bar/README.md) |
+| **staff-board** | Every Claude Code session on your PC as a little Clawd above the prompt: coloured by model, glowing by effort, with what it's doing now and the agents it's running | [plugins/staff-board/README.md](plugins/staff-board/README.md) |
+
+Both need Claude Code 2.1.286 or newer: they use the hooks-module plugin API, and older versions won't load them. They work in the terminal and in the desktop app's Code tab.
 
 ## Install
+
+In any Claude Code session:
 
 ```
 /plugin marketplace add Gooner44/ClaudeMods
@@ -10,44 +19,71 @@ Mods for Claude Code, packaged as a plugin marketplace.
 /plugin install staff-board@claude-mods
 ```
 
-Or try one without installing:
+Then `/reload-plugins`, or start a new session. Install either one on its own if you like.
+
+The same from a terminal:
 
 ```
-claude --plugin-dir path/to/ClaudeMods/plugins/usage-bar
+claude plugin marketplace add Gooner44/ClaudeMods
+claude plugin install usage-bar@claude-mods
+claude plugin install staff-board@claude-mods
 ```
 
-These use Claude Code's hooks-module plugin API (built on 2.1.286); older versions won't load them.
+To try one without installing, from a copy of this repo: `claude --plugin-dir path/to/ClaudeMods/plugins/usage-bar`.
 
-## Plugins
+## Share them with someone
 
-### usage-bar
+The repo is public, so sharing is sending someone the install lines above. Before they install:
+- **Plugins run code on their PC.** These two only read Claude Code's own data, write cards under `~/.claude/staff-board/`, and call `api.anthropic.com` with the person's own login. Anyone can read the code here first.
+- **usage-bar needs a Claude subscription login** (Pro or Max), not an API key.
+- **staff-board shows only their own sessions**, on their own PC. Nobody sees anyone else's board.
+- **Reset times show in US Central** (see usage-bar's Known limits).
 
-A band above the prompt showing how much of your plan's limits you've used:
+To set up a whole team's project so everyone who opens it is offered the mods, add this to the project's `.claude/settings.json`:
 
-- **Session**: the 5-hour window
-- **Weekly**: the 7-day window
-- **Fable 5.1**: a per-model weekly window, when your plan reports one (otherwise "no reading yet")
+```
+{
+  "extraKnownMarketplaces": {
+    "claude-mods": { "source": { "source": "github", "repo": "Gooner44/ClaudeMods" } }
+  },
+  "enabledPlugins": {
+    "usage-bar@claude-mods": true,
+    "staff-board@claude-mods": true
+  }
+}
+```
 
-Each shows the percentage, a meter, and when it resets (times in US Central). The meter turns amber from 70% and red from 90%, with a "Nearing limit" / "At limit" label so the state never relies on color alone.
+## Update and remove
 
-On the desktop app the meters are solid bars; in the terminal they're thin `━━━───` lines. Usage figures need a subscription login and appear after the first reply.
+```
+claude plugin marketplace update claude-mods
+claude plugin update usage-bar@claude-mods
+claude plugin update staff-board@claude-mods
+```
 
-### staff-board
+Then `/reload-plugins` in open sessions. Remove with `claude plugin uninstall <name>@claude-mods`, and the marketplace with `claude plugin marketplace remove claude-mods`.
 
-See every Claude Code session running on this PC, such as Claude, Aesop and background jobs: what each is working on, what it's doing right now, and the agents it has running.
+## Develop it with live reload
 
-- **The band above the prompt:** a little Clawd character for every session and every agent it's running. A character walks while it works and stands (blinking now and then) while idle. Next to each one:
-  - its name and state (working for how long, or idle)
-  - its job: the session's current task, or the agent's task description
-  - the tool it's calling right now
-  - the model, or which session an agent belongs to
+To change a mod and see it at once, load it straight from a copy of this repo instead of the installed copy. Installed plugins are copies kept under `~/.claude/plugins/cache`, so editing the repo doesn't change them.
 
-  This session comes first, then Claude, Aesop and the others, then background jobs. The band sits under usage-bar's meters when both are installed. Collapse it with `[-]` or ctrl+x ctrl+a.
-- **Status line:** the other sessions at a glance, e.g. `Aesop working · 1 agent | 2 jobs`.
-- **`/staff`:** posts the same board as text. Remote Control on the phone draws no band, so this is the phone's view.
+First clone the repo. Then add these two lines to the `env` block of `~/.claude/settings.json`. Use forward slashes, and separate the folders with `;` on Windows or `:` elsewhere:
 
-The characters are pixel art in the terminal. The desktop app shows a small block glyph instead.
+```
+"CLAUDE_CODE_PLUGIN_DIRS": "path/to/ClaudeMods/plugins/usage-bar;path/to/ClaudeMods/plugins/staff-board",
+"CLAUDE_CODE_PLUGIN_DIR_WATCH": "1"
+```
 
-How it works: each session writes a small card to `~/.claude/staff-board/<session id>.json` every few seconds, and reads everyone else's. A card that hasn't been updated for 90 seconds counts as closed. Sessions are named by the `CLAUDE_STAFF` (or `CLAUDE_TASK`) environment variable; unnamed ones show as `Session <id>`. Background (`-p`) runs write their card but don't read the board.
+Turn off the installed copies so each mod loads only once: `claude plugin disable usage-bar@claude-mods`, and the same for staff-board. Then start new sessions.
 
-Old cards stay in the folder (they're ignored once stale); delete the folder's contents any time.
+From then on, saving a file reloads the mod in every session, so a half-finished save shows everywhere. If a change doesn't show, run `/reload-plugins --force`; some visual changes need the desktop app restarted.
+
+Tests: `claude plugin test plugins/staff-board`. Check the marketplace: `claude plugin validate .`
+
+## Release a change
+
+People who installed from the marketplace get a change only when the version goes up:
+1. Bump `version` in the mod's `.claude-plugin/plugin.json`, and the same number in `.claude-plugin/marketplace.json`.
+2. Run `claude plugin validate .`, and the mod's tests.
+3. Commit and push to GitHub.
+4. Others run the update lines above.
