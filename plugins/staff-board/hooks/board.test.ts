@@ -98,13 +98,15 @@ test('desktop metadata counts a title as named only when the app did not choose 
   expect(desktopMeta(meta({}), 'other')).toBe(null)
 })
 
-test('a reply shows as unseen until the person writes to or switches to that session', () => {
-  expect(isUnseen(card({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(true)
-  expect(isUnseen(card({ repliedAt: NOW, promptedAt: NOW - 5_000, focusedAt: NOW + 1_000 }))).toBe(false)
-  expect(isUnseen(card({ repliedAt: NOW - 5_000, promptedAt: NOW }))).toBe(false)
-  expect(isUnseen(card({ repliedAt: NOW, status: 'working' }))).toBe(false)
-  expect(isUnseen(card({ repliedAt: NOW, isJob: true }))).toBe(false)
-  expect(isUnseen(card({}))).toBe(false)
+test('a desktop reply shows as unseen until the person writes to or switches to that session', () => {
+  const desk = (over: Partial<BoardCard>) => card({ desktopId: 'local_1', ...over })
+  expect(isUnseen(desk({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(true)
+  expect(isUnseen(desk({ repliedAt: NOW, promptedAt: NOW - 5_000, focusedAt: NOW + 1_000 }))).toBe(false)
+  expect(isUnseen(desk({ repliedAt: NOW - 5_000, promptedAt: NOW }))).toBe(false)
+  expect(isUnseen(desk({ repliedAt: NOW, status: 'working' }))).toBe(false)
+  expect(isUnseen(desk({ repliedAt: NOW, isJob: true }))).toBe(false)
+  expect(isUnseen(desk({}))).toBe(false)
+  expect(isUnseen(card({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(false)
   expect(isPrompt('<system-reminder>x</system-reminder>\nfix the band')).toBe(true)
   expect(isPrompt('<task-notification><task-id>b1</task-id></task-notification>')).toBe(false)
 })

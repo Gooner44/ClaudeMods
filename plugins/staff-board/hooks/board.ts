@@ -153,10 +153,11 @@ export function desktopMeta(text: string, session: string): DesktopMeta | null {
 }
 
 // A reply the person hasn't seen: the session finished one after their last message to it and,
-// in the desktop app, after they last switched to it. A terminal session has no switch time, so
-// there it means "replied since your last message". Jobs and working sessions never show it.
+// in the desktop app, after they last switched to it. Desktop-app sessions only: a terminal session
+// can't tell when it's looked at, so its bubble stayed up even while the person watched the reply
+// arrive (Tarl, 2026-10-07: turn it off there). Jobs and working sessions never show it.
 export const isUnseen = (c: BoardCard) =>
-  !c.isJob && c.status === 'idle' && !!c.repliedAt && c.repliedAt > Math.max(c.promptedAt ?? 0, c.focusedAt ?? 0)
+  !!c.desktopId && !c.isJob && c.status === 'idle' && !!c.repliedAt && c.repliedAt > Math.max(c.promptedAt ?? 0, c.focusedAt ?? 0)
 
 // A turn the person started, not one a background task or an agent's message started.
 export const isPrompt = (text: string) => !/^\s*</.test(text.replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/g, ''))
