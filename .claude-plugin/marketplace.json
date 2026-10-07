@@ -18,6 +18,12 @@
       "source": "./plugins/staff-board",
       "description": "Every Claude Code session on your PC as a little Clawd above the prompt: coloured by model, glowing by effort, with what it is doing and its agents",
       "version": "0.5.0"
+    },
+    {
+      "name": "compact-brief",
+      "source": "./plugins/compact-brief",
+      "description": "Tells compaction what to keep: your own words near verbatim first, then what changed, then findings, with tool output described in a few words",
+      "version": "0.1.0"
     }
   ]
 }

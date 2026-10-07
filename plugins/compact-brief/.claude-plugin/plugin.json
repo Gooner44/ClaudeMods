@@ -1,0 +1,6 @@
+{
+  "name": "compact-brief",
+  "version": "0.1.0",
+  "description": "Tells Claude Code's compaction what to keep: your own words near verbatim first, then what changed, then findings, with tool output described in a few words",
+  "author": { "name": "Tarl Raney" }
+}
