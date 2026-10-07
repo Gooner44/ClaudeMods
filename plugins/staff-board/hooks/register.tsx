@@ -65,9 +65,8 @@ async function flush($: EngineInterface, force = false) {
   // A job is a session nothing draws on (a claude -p run); the desktop app and the phone attach
   // surfaces, so their sessions count as people-facing even when the SDK started them, and a
   // session the desktop app keeps is never a job, attached or not.
-  const surfaces = await $.session.surfaces()
-  const isJob = surfaces.length === 0 && !card.desktopId
-  card = { ...card, agents, isJob, updatedAt: now, surfaces: [...surfaces] } as BoardCard
+  const isJob = (await $.session.surfaces()).length === 0 && !card.desktopId
+  card = { ...card, agents, isJob, updatedAt: now }
   isDirty = false
   lastWrite = now
   await update($, me, () => card)
@@ -166,13 +165,6 @@ async function animate($: EngineInterface) {
   }
 }
 
-async function logView($: EngineInterface, what: string, surface: string, clientId: string) {
-  const at = await $.clock.now()
-  const viewLog = [...(((card as unknown as { viewLog?: unknown[] })?.viewLog) ?? []), { at, what, surface, clientId }].slice(-30)
-  change({ viewLog, surfaces: [...(await $.session.surfaces())] } as unknown as Partial<BoardCard>)
-  await flush($, true)
-}
-
 const change = (patch: Partial<BoardCard>) => {
   if (!card) return
   card = { ...card, ...patch }
@@ -268,19 +260,6 @@ export const register: Register = on => {
       isDirty = true
     } else change({ activity: what })
     return next(e)
-  })
-
-  // Diagnostic (2026-10-07, temporary): does a desktop or phone view of a terminal session attach and detach
-  // as Tarl switches to it and away? Each event lands in the card's viewLog; nothing reads it yet.
-  on('session.attach', async ($, e, next) => {
-    const result = await next(e)
-    await logView($, 'attach', e.surface, e.clientId)
-    return result
-  })
-  on('session.detach', async ($, e, next) => {
-    const result = await next(e)
-    await logView($, 'detach:' + e.reason, e.surface, e.clientId)
-    return result
   })
 
   on('session.end', async ($, e, next) => {
