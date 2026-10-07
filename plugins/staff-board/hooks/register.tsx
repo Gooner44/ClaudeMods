@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
-import { ago, asText, beneath, describe, desktopMeta, liveCards, roster, signature, summary, taskOf } from './board'
+import { ago, asText, beneath, describe, desktopMeta, isPrompt, isUnseen, liveCards, roster, signature, summary, taskOf } from './board'
 import { SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
@@ -18,7 +18,8 @@ const others = atom({ plugin: 'staff-board', key: 'others' } as const, [] as Boa
 const FLUSH_MS = 3_000
 const HEARTBEAT_MS = 20_000
 const READ_MS = 5_000
-const META_MS = 30_000
+// Also how soon a reply's bubble clears after the person switches to that session in the app.
+const META_MS = 10_000
 const META_SCANS = 5
 const FRAME_MS = 300
 const TILE_GAP = 2
@@ -144,6 +145,7 @@ async function readMeta($: EngineInterface) {
     isNamed: meta.isNamed,
     name: staffName || meta.title || card.name,
     effort: card.effort ?? meta.effort,
+    focusedAt: meta.focusedAt,
   }
   if (Object.entries(patch).some(([k, v]) => card![k as keyof BoardCard] !== v)) change(patch)
 }
@@ -198,6 +200,13 @@ export const register: Register = on => {
       startedAt: now,
       updatedAt: now,
     }
+    // A reload starts the card over; keep whether its last reply has been seen.
+    try {
+      const was = JSON.parse(await $.fs.read(file)) as BoardCard
+      if (was.session === session) card = { ...card, repliedAt: was.repliedAt, promptedAt: was.promptedAt }
+    } catch {
+      // No card yet: a new session.
+    }
     await readMeta($)
     await flush($, true)
 
@@ -214,7 +223,8 @@ export const register: Register = on => {
 
   on('turn.start', async ($, e, next) => {
     isUltraTurn = isUltra(e.text)
-    change({ status: 'working', task: taskOf(e.text), activity: 'thinking', since: await $.clock.now() })
+    const now = await $.clock.now()
+    change({ status: 'working', task: taskOf(e.text), activity: 'thinking', since: now, ...(isPrompt(e.text) ? { promptedAt: now } : {}) })
     return next(e)
   })
 
@@ -238,7 +248,7 @@ export const register: Register = on => {
     if (e.agentId) {
       delete agentActivity[e.agentId]
       delete agentModel[e.agentId]
-    } else change({ status: 'idle', activity: undefined, since: undefined })
+    } else change({ status: 'idle', activity: undefined, since: undefined, repliedAt: await $.clock.now() })
     isDirty = true
     return next(e)
   })
@@ -285,6 +295,7 @@ export const register: Register = on => {
       state: string
       work: string
       about: string
+      bubble?: boolean
     }
     const tiles: Tile[] = shown.flatMap(c => {
       const isWorking = c.status === 'working'
@@ -297,6 +308,8 @@ export const register: Register = on => {
         state: isWorking ? ago(c.since, now) || 'working' : 'idle',
         work: isWorking ? (c.activity && c.activity !== 'thinking' ? c.activity : c.task ?? 'thinking') : c.task ? `last: ${c.task}` : 'no task yet',
         about: c.task ?? '',
+        // A reply the person hasn't seen; never on this session's own tile, which they're looking at.
+        bubble: c !== self && isUnseen(c),
       }
       return [
         head,
@@ -331,7 +344,7 @@ export const register: Register = on => {
       const label = `${t.name} · ${modelName(t.model)} · ${t.effort ?? 'effort unknown'}${t.about ? `\n${t.about}` : ''}`
       return (
         <Svg
-          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: label })}
+          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\nNew reply you haven't seen` : label, bubble: t.bubble })}
           alt={label}
           width={SVG_W}
           height={SVG_H}
@@ -344,6 +357,7 @@ export const register: Register = on => {
       const color = hex(t.isWorking ? modelColor(t.model) : dimmed(modelColor(t.model)))
       return (
         <Box flexDirection="row" columnGap={1} overflow="hidden">
+          {t.bubble && e.surface === 'terminal' ? <Text color="#ffffff">💬</Text> : null}
           <Text bold color={color} wrap="truncate">{t.name}</Text>
           {t.state ? <Text dimColor wrap="truncate">{t.state}</Text> : null}
         </Box>

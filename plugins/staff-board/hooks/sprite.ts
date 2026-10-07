@@ -167,7 +167,7 @@ export const SVG_W = 36
 export const SVG_H = 24
 
 // The SVG character: the model's colour, the effort's glow, walking while it works.
-export function svgClawd(opts: { model?: string; effort?: string; isWorking: boolean; seed: number; title: string }): string {
+export function svgClawd(opts: { model?: string; effort?: string; isWorking: boolean; seed: number; title: string; bubble?: boolean }): string {
   const rgb = modelColor(opts.model)
   const color = hex(rgb)
   const body = hex(opts.isWorking ? rgb : dimmed(rgb))
@@ -213,13 +213,19 @@ export function svgClawd(opts: { model?: string; effort?: string; isWorking: boo
     ? ''
     : `<g visibility="hidden"><animate attributeName="visibility" values="hidden;visible" keyTimes="0;0.96" dur="4.2s" begin="-${(phase * 3).toFixed(2)}s" calcMode="discrete" repeatCount="indefinite"/>` +
       `<rect x="3" y="2" width="1" height="1" fill="${body}"/><rect x="8" y="2" width="1" height="1" fill="${body}"/></g>`
+  // A reply waiting to be read: a little pixel speech bubble off the top-right of the head.
+  const bubble = opts.bubble
+    ? `<g><rect x="10.8" y="-4.4" width="5.2" height="3.2" fill="#ffffff" stroke="#8a8a8a" stroke-width="0.35"/>` +
+      `<rect x="11.2" y="-1.4" width="1.2" height="1.1" fill="#ffffff"/><rect x="10.9" y="-1.2" width="0.35" height="1.1" fill="#8a8a8a"/>` +
+      `<rect x="12" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/><rect x="13.2" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/><rect x="14.4" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/></g>`
+    : ''
   const title = opts.title.replace(/[<&>"]/g, ch => `&#${ch.charCodeAt(0)};`)
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4.5 -4.6 21 14" width="${SVG_W}" height="${SVG_H}" shape-rendering="crispEdges" style="color-scheme:light dark;background:transparent">` +
     // The interactive drawing sits in its own frame; a frame whose colour scheme differs from the
     // app's gets an opaque white backdrop in dark mode, so the SVG takes whichever scheme the app has.
-    `<style>:root{color-scheme:light dark;background:transparent}</style><title>${title}</title><defs>${defs}</defs>${back}${groups}${blink}</svg>`
+    `<style>:root{color-scheme:light dark;background:transparent}</style><title>${title}</title><defs>${defs}</defs>${back}${groups}${blink}${bubble}</svg>`
   )
 }
 

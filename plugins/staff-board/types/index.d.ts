@@ -31,6 +31,11 @@ export type BoardCard = {
   task?: string
   activity?: string
   since?: number
+  // When its last reply finished, when the person last sent it a message, and (desktop app only)
+  // when they last switched to it there. A reply newer than both is one they haven't seen.
+  repliedAt?: number
+  promptedAt?: number
+  focusedAt?: number
   agents: BoardAgent[]
   startedAt: number
   updatedAt: number

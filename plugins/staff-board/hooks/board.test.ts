@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { asText, beneath, describe, desktopMeta, liveCards, roster, summary, taskOf } from './board'
+import { asText, beneath, describe, desktopMeta, isPrompt, isUnseen, liveCards, roster, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -96,4 +96,15 @@ test('desktop metadata counts a title as named only when the app did not choose 
   expect(desktopMeta(meta({ title: 'Reload plugins', titleSource: 'auto' }), 's')?.isNamed).toBe(false)
   expect(desktopMeta(meta({ spawnedFrom: { sessionId: 'local_0' } }), 's')?.spawnedFrom).toBe('local_0')
   expect(desktopMeta(meta({}), 'other')).toBe(null)
+})
+
+test('a reply shows as unseen until the person writes to or switches to that session', () => {
+  expect(isUnseen(card({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(true)
+  expect(isUnseen(card({ repliedAt: NOW, promptedAt: NOW - 5_000, focusedAt: NOW + 1_000 }))).toBe(false)
+  expect(isUnseen(card({ repliedAt: NOW - 5_000, promptedAt: NOW }))).toBe(false)
+  expect(isUnseen(card({ repliedAt: NOW, status: 'working' }))).toBe(false)
+  expect(isUnseen(card({ repliedAt: NOW, isJob: true }))).toBe(false)
+  expect(isUnseen(card({}))).toBe(false)
+  expect(isPrompt('<system-reminder>x</system-reminder>\nfix the band')).toBe(true)
+  expect(isPrompt('<task-notification><task-id>b1</task-id></task-notification>')).toBe(false)
 })

@@ -15,6 +15,7 @@ One tile per character: this session first (marked "(here)"), then your other se
 | **Walking or standing** | Walking while it works; standing (blinking now and then) and dimmed while idle |
 | **Name and state** | The session's name, then how long it's been working, or "idle" |
 | **The line beneath** | What it's doing right now (the tool it's calling, e.g. "editing board.ts"), or the task it's on; idle sessions show "last:" and their last task |
+| **A speech bubble by the head** (0.4) | That session finished a reply you haven't seen. In the desktop app it clears within about 10 seconds of you switching to that session, or when you send it a message. A terminal session can't tell when you look at it, so there the bubble means "replied since your last message" and clears when you write to it. In the terminal the bubble is a 💬 before the name. This session's own tile never shows one. |
 
 In the desktop app, hover a character for its model, effort and full task. A session's glow appears after its first model request.
 

@@ -124,7 +124,7 @@ export function roster(others: BoardCard[], me: BoardCard | null): BoardCard[] {
 
 // What the desktop app keeps about one of its sessions (claude-code-sessions/…/local_*.json),
 // as far as the board needs it; null when the file is someone else's or unreadable.
-export type DesktopMeta = { desktopId: string; title?: string; isNamed: boolean; spawnedFrom?: string; effort?: string }
+export type DesktopMeta = { desktopId: string; title?: string; isNamed: boolean; spawnedFrom?: string; effort?: string; focusedAt?: number }
 export function desktopMeta(text: string, session: string): DesktopMeta | null {
   try {
     const j = JSON.parse(text) as {
@@ -134,6 +134,7 @@ export function desktopMeta(text: string, session: string): DesktopMeta | null {
       titleSource?: string
       effort?: string
       spawnedFrom?: { sessionId?: string }
+      lastFocusedAt?: number
     }
     if (j.cliSessionId !== session || !j.sessionId) return null
     return {
@@ -143,11 +144,22 @@ export function desktopMeta(text: string, session: string): DesktopMeta | null {
       isNamed: !!j.title && !!j.titleSource && j.titleSource !== 'auto',
       spawnedFrom: j.spawnedFrom?.sessionId,
       effort: j.effort,
+      // The app stamps this when the person switches to the session, not while they stay on it.
+      focusedAt: typeof j.lastFocusedAt === 'number' ? j.lastFocusedAt : undefined,
     }
   } catch {
     return null
   }
 }
+
+// A reply the person hasn't seen: the session finished one after their last message to it and,
+// in the desktop app, after they last switched to it. A terminal session has no switch time, so
+// there it means "replied since your last message". Jobs and working sessions never show it.
+export const isUnseen = (c: BoardCard) =>
+  !c.isJob && c.status === 'idle' && !!c.repliedAt && c.repliedAt > Math.max(c.promptedAt ?? 0, c.focusedAt ?? 0)
+
+// A turn the person started, not one a background task or an agent's message started.
+export const isPrompt = (text: string) => !/^\s*</.test(text.replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/g, ''))
 
 // A card's content without its heartbeat, to tell whether a re-read changed anything.
 export const signature = (cards: BoardCard[]) => JSON.stringify(cards.map(c => ({ ...c, updatedAt: 0 })))
