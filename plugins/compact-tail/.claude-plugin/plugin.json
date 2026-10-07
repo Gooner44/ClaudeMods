@@ -1,0 +1,6 @@
+{
+  "name": "compact-tail",
+  "version": "0.1.0",
+  "description": "Automatic compaction summarizes only the older part of the conversation and keeps the latest part word for word; a reopen tool brings back anything summarized, from a local archive",
+  "author": { "name": "Tarl Raney" }
+}

@@ -24,6 +24,12 @@
       "source": "./plugins/compact-brief",
       "description": "Tells compaction what to keep: your own words near verbatim first, then what changed, then findings, with tool output described in a few words",
       "version": "0.1.0"
+    },
+    {
+      "name": "compact-tail",
+      "source": "./plugins/compact-tail",
+      "description": "Automatic compaction summarizes only the older part and keeps the latest part word for word; a reopen tool brings back anything summarized",
+      "version": "0.1.0"
     }
   ]
 }

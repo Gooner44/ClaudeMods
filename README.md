@@ -7,8 +7,9 @@ Mods for Claude Code by Tarl Raney, packaged as a plugin marketplace named `clau
 | **usage-bar** | A band above the prompt with your Session, Weekly and Fable 5.1 usage, and when each resets | [plugins/usage-bar/README.md](plugins/usage-bar/README.md) |
 | **staff-board** | Every Claude Code session on your PC as a little Clawd above the prompt: coloured by model, glowing by effort, with what it's doing now and the agents it's running | [plugins/staff-board/README.md](plugins/staff-board/README.md) |
 | **compact-brief** | When a long session compacts, your own words, decisions and corrections survive near verbatim, ahead of tool output | [plugins/compact-brief/README.md](plugins/compact-brief/README.md) |
+| **compact-tail** | Automatic compaction summarizes only the older part and keeps the latest part word for word; a `reopen` tool brings back anything summarized | [plugins/compact-tail/README.md](plugins/compact-tail/README.md) |
 
-Both need Claude Code 2.1.286 or newer: they use the hooks-module plugin API, and older versions won't load them. They work in the terminal and in the desktop app's Code tab.
+All of them need Claude Code 2.1.286 or newer: they use the hooks-module plugin API, and older versions won't load them. They work in the terminal and in the desktop app's Code tab.
 
 ## Install
 
@@ -19,9 +20,10 @@ In any Claude Code session:
 /plugin install usage-bar@claude-mods
 /plugin install staff-board@claude-mods
 /plugin install compact-brief@claude-mods
+/plugin install compact-tail@claude-mods
 ```
 
-Then `/reload-plugins`, or start a new session. Install either one on its own if you like.
+Then `/reload-plugins`, or start a new session. Install any of them on its own if you like.
 
 The same from a terminal:
 
@@ -30,6 +32,7 @@ claude plugin marketplace add Gooner44/ClaudeMods
 claude plugin install usage-bar@claude-mods
 claude plugin install staff-board@claude-mods
 claude plugin install compact-brief@claude-mods
+claude plugin install compact-tail@claude-mods
 ```
 
 To try one without installing, from a copy of this repo: `claude --plugin-dir path/to/ClaudeMods/plugins/usage-bar`.
@@ -41,6 +44,7 @@ The repo is public, so sharing is sending someone the install lines above. Befor
 - **usage-bar needs a Claude subscription login** (Pro or Max), not an API key.
 - **staff-board shows only their own sessions**, on their own PC. Nobody sees anyone else's board.
 - **compact-brief only changes the instructions** Claude Code's own compaction runs with. It sends nothing anywhere itself.
+- **compact-tail keeps an archive** of what each compaction summarized, tool output included, under `~/.claude/compact-tail/` on their own PC, so Claude can reopen it. Nothing leaves the PC.
 - **Reset times show in US Central** (see usage-bar's Known limits).
 
 To set up a whole team's project so everyone who opens it is offered the mods, add this to the project's `.claude/settings.json`:
@@ -53,7 +57,8 @@ To set up a whole team's project so everyone who opens it is offered the mods, a
   "enabledPlugins": {
     "usage-bar@claude-mods": true,
     "staff-board@claude-mods": true,
-    "compact-brief@claude-mods": true
+    "compact-brief@claude-mods": true,
+    "compact-tail@claude-mods": true
   }
 }
 ```
@@ -65,6 +70,7 @@ claude plugin marketplace update claude-mods
 claude plugin update usage-bar@claude-mods
 claude plugin update staff-board@claude-mods
 claude plugin update compact-brief@claude-mods
+claude plugin update compact-tail@claude-mods
 ```
 
 Then `/reload-plugins` in open sessions. Remove with `claude plugin uninstall <name>@claude-mods`, and the marketplace with `claude plugin marketplace remove claude-mods`.
