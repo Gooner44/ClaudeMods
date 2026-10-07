@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { asText, beneath, describe, desktopMeta, isPrompt, isUnseen, liveCards, roster, summary, taskOf } from './board'
+import { asText, beneath, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -98,15 +98,24 @@ test('desktop metadata counts a title as named only when the app did not choose 
   expect(desktopMeta(meta({}), 'other')).toBe(null)
 })
 
-test('a desktop reply shows as unseen until the person writes to or switches to that session', () => {
-  const desk = (over: Partial<BoardCard>) => card({ desktopId: 'local_1', ...over })
-  expect(isUnseen(desk({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(true)
-  expect(isUnseen(desk({ repliedAt: NOW, promptedAt: NOW - 5_000, focusedAt: NOW + 1_000 }))).toBe(false)
-  expect(isUnseen(desk({ repliedAt: NOW - 5_000, promptedAt: NOW }))).toBe(false)
-  expect(isUnseen(desk({ repliedAt: NOW, status: 'working' }))).toBe(false)
-  expect(isUnseen(desk({ repliedAt: NOW, isJob: true }))).toBe(false)
-  expect(isUnseen(desk({}))).toBe(false)
-  expect(isUnseen(card({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(false)
+test('the bubble shows while the session had the last word, terminal or desktop', () => {
+  expect(isYourTurn(card({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(true)
+  expect(isYourTurn(card({ desktopId: 'local_1', repliedAt: NOW, promptedAt: NOW - 5_000, focusedAt: NOW + 1_000 }))).toBe(true)
+  expect(isYourTurn(card({ repliedAt: NOW - 5_000, promptedAt: NOW }))).toBe(false)
+  expect(isYourTurn(card({ repliedAt: NOW, status: 'working' }))).toBe(false)
+  expect(isYourTurn(card({ repliedAt: NOW, isJob: true }))).toBe(false)
+  expect(isYourTurn(card({}))).toBe(false)
   expect(isPrompt('<system-reminder>x</system-reminder>\nfix the band')).toBe(true)
+})
+
+test('an idle tile shows the reply while it is newer than the last message, else the message', () => {
+  expect(replyOf('```js\nx()\n```\n\n**Done.** The band is **live**.')).toBe('Done. The band is live.')
+  expect(replyOf('| a | b |\n|---|---|\n| 1 | 2 |')).toBe('| a | b |')
+  expect(replyOf('- See [the page](https://x.test) now')).toBe('See the page now')
+  expect(replyOf('\n\n')).toBeUndefined()
+  expect(idleLine(card({ task: 'fix it', reply: 'Fixed.', promptedAt: NOW - 5_000, repliedAt: NOW }))).toBe('replied: Fixed.')
+  expect(idleLine(card({ task: 'and now?', reply: 'Fixed.', promptedAt: NOW, repliedAt: NOW - 5_000 }))).toBe('last: and now?')
+  expect(idleLine(card({ task: 'fix it' }))).toBe('last: fix it')
+  expect(idleLine(card({}))).toBe('no task yet')
   expect(isPrompt('<task-notification><task-id>b1</task-id></task-notification>')).toBe(false)
 })

@@ -52,6 +52,23 @@ export const taskOf = (text: string) => {
   return clip(firstLine(bare) || firstLine(text), 100)
 }
 
+// The first line of a reply worth reading on a tile: past code fences, table rules and blank lines,
+// with the markdown marks taken off.
+export const replyOf = (answer: string) => {
+  let isCode = false
+  const line = answer
+    .split(/\r?\n/)
+    .filter(l => (/^\s*```/.test(l) ? ((isCode = !isCode), false) : !isCode && !/^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(l)))
+    .map(l => l.replace(/^\s*(#+|[-*>]|\d+\.)\s+/, '').replace(/[*_`]+/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').trim())
+    .find(l => /[A-Za-z0-9]/.test(l))
+  return line ? clip(line, 100) : undefined
+}
+
+// Beneath an idle tile: its last reply while that's newer than the person's last message (Tarl,
+// 2026-10-07), otherwise that message.
+export const idleLine = (c: Pick<BoardCard, 'task' | 'reply' | 'repliedAt' | 'promptedAt'>) =>
+  c.reply && (c.repliedAt ?? 0) > (c.promptedAt ?? 0) ? `replied: ${c.reply}` : c.task ? `last: ${c.task}` : 'no task yet'
+
 // What the plugins beneath drew in the band, or nothing. The engine draws nothing of its own
 // there, and its placeholder (type 'engine'), embedded in a tree, makes the desktop app drop
 // the whole band; so the innermost mod leaves it out.
@@ -152,12 +169,10 @@ export function desktopMeta(text: string, session: string): DesktopMeta | null {
   }
 }
 
-// A reply the person hasn't seen: the session finished one after their last message to it and,
-// in the desktop app, after they last switched to it. Desktop-app sessions only: a terminal session
-// can't tell when it's looked at, so its bubble stayed up even while the person watched the reply
-// arrive (Tarl, 2026-10-07: turn it off there). Jobs and working sessions never show it.
-export const isUnseen = (c: BoardCard) =>
-  !!c.desktopId && !c.isJob && c.status === 'idle' && !!c.repliedAt && c.repliedAt > Math.max(c.promptedAt ?? 0, c.focusedAt ?? 0)
+// The person's move: the session's reply is the last word, newer than their last message to it
+// (Tarl, 2026-10-07). Not "unread": no session can tell when it's looked at (a terminal one, or the
+// desktop app's view of it), so the bubble stays until they write back. Jobs and working sessions never show it.
+export const isYourTurn = (c: BoardCard) => !c.isJob && c.status === 'idle' && !!c.repliedAt && c.repliedAt > (c.promptedAt ?? 0)
 
 // A turn the person started, not one a background task or an agent's message started.
 export const isPrompt = (text: string) => !/^\s*</.test(text.replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/g, ''))

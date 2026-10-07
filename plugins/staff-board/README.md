@@ -14,8 +14,8 @@ One tile per character: this session first (marked "(here)"), then your other se
 | **The glow around it** | The effort: faint at low, brighter and wider through medium, high, xhigh and max; a flickering aura with flames at ultracode |
 | **Walking or standing** | Walking while it works; standing (blinking now and then) and dimmed while idle |
 | **Name and state** | The session's name, then how long it's been working, or "idle" |
-| **The line beneath** | What it's doing right now (the tool it's calling, e.g. "editing board.ts"), or the task it's on; idle sessions show "last:" and their last task |
-| **A speech bubble by the head** (0.4) | That desktop-app session finished a reply you haven't seen. It clears within about 10 seconds of you switching to that session, or when you send it a message. Terminal sessions never show one: they can't tell when you look at them, not even through the desktop app's view of them. In the terminal band the bubble is a 💬 before the name. This session's own tile never shows one. |
+| **The line beneath** | What it's doing right now (the tool it's calling, e.g. "editing board.ts"), or the task it's on. An idle session shows "replied:" and the first line of its last reply when that came after your last message, otherwise "last:" and your last message |
+| **A speech bubble by the head** (0.5) | Your move: that session replied after your last message to it. It clears when you write back. It doesn't mean "unread": no session can tell when you look at it. In the terminal band the bubble is a 💬 before the name. This session's own tile never shows one. |
 
 In the desktop app, hover a character for its model, effort and full task. A session's glow appears after its first model request.
 
@@ -65,7 +65,7 @@ Every session reads the others' cards every 5 seconds. A card not updated for 90
 
 Desktop-app sessions also read the app's own record of the session, for its title, effort and the session it was started from. That's how sessions you renamed, and their offspring, get onto the band.
 
-**Privacy:** the cards stay on your PC, in your user folder, and nothing is uploaded. They do hold the first line of each session's current prompt, readable by any program running as you. Old cards are ignored once stale, and you can delete the folder's contents any time.
+**Privacy:** the cards stay on your PC, in your user folder, and nothing is uploaded. They do hold the first line of each session's current prompt and of its last reply, readable by any program running as you. Old cards are ignored once stale, and you can delete the folder's contents any time.
 
 ## Settings
 

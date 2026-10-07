@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
-import { ago, asText, beneath, describe, desktopMeta, isPrompt, isUnseen, liveCards, roster, signature, summary, taskOf } from './board'
+import { ago, asText, beneath, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, signature, summary, taskOf } from './board'
 import { SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
@@ -203,7 +203,7 @@ export const register: Register = on => {
     // A reload starts the card over; keep whether its last reply has been seen.
     try {
       const was = JSON.parse(await $.fs.read(file)) as BoardCard
-      if (was.session === session) card = { ...card, repliedAt: was.repliedAt, promptedAt: was.promptedAt }
+      if (was.session === session) card = { ...card, repliedAt: was.repliedAt, promptedAt: was.promptedAt, reply: was.reply, task: was.task }
     } catch {
       // No card yet: a new session.
     }
@@ -248,7 +248,10 @@ export const register: Register = on => {
     if (e.agentId) {
       delete agentActivity[e.agentId]
       delete agentModel[e.agentId]
-    } else change({ status: 'idle', activity: undefined, since: undefined, repliedAt: await $.clock.now() })
+    } else {
+      const reply = replyOf(e.answer ?? '')
+      change({ status: 'idle', activity: undefined, since: undefined, repliedAt: await $.clock.now(), ...(reply ? { reply } : {}) })
+    }
     isDirty = true
     return next(e)
   })
@@ -306,10 +309,10 @@ export const register: Register = on => {
         effort: c.effort,
         isWorking,
         state: isWorking ? ago(c.since, now) || 'working' : 'idle',
-        work: isWorking ? (c.activity && c.activity !== 'thinking' ? c.activity : c.task ?? 'thinking') : c.task ? `last: ${c.task}` : 'no task yet',
-        about: c.task ?? '',
-        // A reply the person hasn't seen; never on this session's own tile, which they're looking at.
-        bubble: c !== self && isUnseen(c),
+        work: isWorking ? (c.activity && c.activity !== 'thinking' ? c.activity : c.task ?? 'thinking') : idleLine(c),
+        about: isWorking ? c.task ?? '' : idleLine(c),
+        // The last word is theirs: your move. Never on this session's own tile.
+        bubble: c !== self && isYourTurn(c),
       }
       return [
         head,
@@ -344,7 +347,7 @@ export const register: Register = on => {
       const label = `${t.name} · ${modelName(t.model)} · ${t.effort ?? 'effort unknown'}${t.about ? `\n${t.about}` : ''}`
       return (
         <Svg
-          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\nNew reply you haven't seen` : label, bubble: t.bubble })}
+          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\nReplied: your turn` : label, bubble: t.bubble })}
           alt={label}
           width={SVG_W}
           height={SVG_H}

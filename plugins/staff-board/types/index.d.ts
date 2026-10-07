@@ -35,6 +35,8 @@ export type BoardCard = {
   // when they last switched to it there. A reply newer than both is one they haven't seen.
   repliedAt?: number
   promptedAt?: number
+  // The first line of its last reply, shown beneath an idle tile while it's newer than the person's last message.
+  reply?: string
   focusedAt?: number
   agents: BoardAgent[]
   startedAt: number
