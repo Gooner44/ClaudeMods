@@ -34,3 +34,14 @@ test('the SVG glows by effort and flames only at ultracode', () => {
   expect(svg('high')).toContain('a &#60;b&#62;')
   expect(svg('high').length).toBeLessThan(131072)
 })
+
+test('the bubble shows what the session wants and fades to half', () => {
+  const svg = (bubble?: boolean | 'reply' | 'permission' | 'question', isFaded?: boolean) =>
+    svgClawd({ model: 'opus', isWorking: false, seed: 1, title: 't', bubble, isFaded })
+  expect(svg()).not.toContain('#e5484d')
+  expect(svg(true)).toBe(svg('reply'))
+  expect(svg('permission')).toContain('#e5484d')
+  expect(svg('question')).toContain('#f5b301')
+  expect(svg('permission', true)).toContain('opacity="0.5"')
+  expect(svg('permission')).not.toContain('<g opacity="0.5"')
+})

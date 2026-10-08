@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { asText, beneath, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf } from './board'
+import { FADE_MS, asText, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -118,4 +118,16 @@ test('an idle tile shows the reply while it is newer than the last message, else
   expect(idleLine(card({ task: 'fix it' }))).toBe('last: fix it')
   expect(idleLine(card({}))).toBe('no task yet')
   expect(isPrompt('<task-notification><task-id>b1</task-id></task-notification>')).toBe(false)
+})
+
+test('a bubble asks for the most urgent thing and fades after ten minutes', () => {
+  const asking = card({ status: 'working', waitingOn: 'permission', waitingTool: 'Bash', waitingSince: NOW - 1_000, repliedAt: NOW - 9_000 })
+  expect(bubbleOf(asking, NOW)).toEqual({ kind: 'permission', isFaded: false })
+  expect(bubbleOf({ ...asking, waitingOn: 'question' }, NOW)?.kind).toBe('question')
+  expect(bubbleOf(asking, NOW - 1_000 + FADE_MS)).toEqual({ kind: 'permission', isFaded: true })
+  // Once the turn ends the wait is over; a reply then shows the reply's bubble.
+  expect(bubbleOf(card({ waitingOn: 'permission', repliedAt: NOW - 5_000, promptedAt: NOW - 9_000 }), NOW)).toEqual({ kind: 'reply', isFaded: false })
+  expect(bubbleOf(card({ repliedAt: NOW - FADE_MS - 1, promptedAt: NOW - FADE_MS - 9_000 }), NOW)?.isFaded).toBe(true)
+  expect(bubbleOf(card({ status: 'working' }), NOW)).toBeUndefined()
+  expect(bubbleOf({ ...asking, isJob: true }, NOW)).toBeUndefined()
 })

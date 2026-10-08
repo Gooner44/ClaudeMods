@@ -177,5 +177,21 @@ export const isYourTurn = (c: BoardCard) => !c.isJob && c.status === 'idle' && !
 // A turn the person started, not one a background task or an agent's message started.
 export const isPrompt = (text: string) => !/^\s*</.test(text.replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/g, ''))
 
-// A card's content without its heartbeat, to tell whether a re-read changed anything.
-export const signature = (cards: BoardCard[]) => JSON.stringify(cards.map(c => ({ ...c, updatedAt: 0 })))
+// A bubble that has been up this long fades to half strength.
+export const FADE_MS = 10 * 60_000
+
+export type Bubble = { kind: 'permission' | 'question' | 'reply'; isFaded: boolean }
+
+// What the session wants from the person, most urgent first: an OK at a permission prompt, an
+// answer to its question, or a reply to its reply.
+export function bubbleOf(c: BoardCard, now: number): Bubble | undefined {
+  if (c.isJob) return undefined
+  const at = (kind: Bubble['kind'], since: number) => ({ kind, isFaded: now - since >= FADE_MS })
+  if (c.status === 'working' && c.waitingOn) return at(c.waitingOn, c.waitingSince ?? now)
+  return isYourTurn(c) ? at('reply', c.repliedAt!) : undefined
+}
+
+// A card's content without its heartbeat, to tell whether a re-read changed anything (a bubble
+// fading counts).
+export const signature = (cards: BoardCard[], now = 0) =>
+  JSON.stringify(cards.map(c => ({ ...c, updatedAt: 0, faded: now ? bubbleOf(c, now)?.isFaded : undefined })))

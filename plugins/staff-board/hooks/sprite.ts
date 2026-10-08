@@ -167,7 +167,37 @@ export const SVG_W = 36
 export const SVG_H = 24
 
 // The SVG character: the model's colour, the effort's glow, walking while it works.
-export function svgClawd(opts: { model?: string; effort?: string; isWorking: boolean; seed: number; title: string; bubble?: boolean }): string {
+// The bubble's fill, outline and mark: a reply's three dots, a permission prompt's "!", a question's "?".
+const BUBBLES = {
+  reply: {
+    fill: '#ffffff',
+    line: '#8a8a8a',
+    mark: `<rect x="12" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/><rect x="13.2" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/><rect x="14.4" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/>`,
+  },
+  permission: {
+    fill: '#e5484d',
+    line: '#8a1f22',
+    mark: `<rect x="13" y="-4" width="0.9" height="1.6" fill="#ffffff"/><rect x="13" y="-2.1" width="0.9" height="0.7" fill="#ffffff"/>`,
+  },
+  question: {
+    fill: '#f5b301',
+    line: '#8a6400',
+    mark:
+      `<rect x="12.6" y="-4.1" width="1.8" height="0.6" fill="#1a1a1a"/><rect x="13.9" y="-3.6" width="0.6" height="0.7" fill="#1a1a1a"/>` +
+      `<rect x="13.2" y="-3" width="0.7" height="0.6" fill="#1a1a1a"/><rect x="13.2" y="-2.1" width="0.7" height="0.6" fill="#1a1a1a"/>`,
+  },
+} as const
+
+export function svgClawd(opts: {
+  model?: string
+  effort?: string
+  isWorking: boolean
+  seed: number
+  title: string
+  // `true` is a reply's bubble (ClaudeDash before 0.6 passes that).
+  bubble?: boolean | keyof typeof BUBBLES
+  isFaded?: boolean
+}): string {
   const rgb = modelColor(opts.model)
   const color = hex(rgb)
   const body = hex(opts.isWorking ? rgb : dimmed(rgb))
@@ -213,11 +243,12 @@ export function svgClawd(opts: { model?: string; effort?: string; isWorking: boo
     ? ''
     : `<g visibility="hidden"><animate attributeName="visibility" values="hidden;visible" keyTimes="0;0.96" dur="4.2s" begin="-${(phase * 3).toFixed(2)}s" calcMode="discrete" repeatCount="indefinite"/>` +
       `<rect x="3" y="2" width="1" height="1" fill="${body}"/><rect x="8" y="2" width="1" height="1" fill="${body}"/></g>`
-  // A reply waiting to be read: a little pixel speech bubble off the top-right of the head.
-  const bubble = opts.bubble
-    ? `<g><rect x="10.8" y="-4.4" width="5.2" height="3.2" fill="#ffffff" stroke="#8a8a8a" stroke-width="0.35"/>` +
-      `<rect x="11.2" y="-1.4" width="1.2" height="1.1" fill="#ffffff"/><rect x="10.9" y="-1.2" width="0.35" height="1.1" fill="#8a8a8a"/>` +
-      `<rect x="12" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/><rect x="13.2" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/><rect x="14.4" y="-3.1" width="0.8" height="0.8" fill="#1a1a1a"/></g>`
+  // Wanting the person: a little pixel speech bubble off the top-right of the head, at half strength
+  // once it has been up a while.
+  const b = opts.bubble ? BUBBLES[opts.bubble === true ? 'reply' : opts.bubble] : undefined
+  const bubble = b
+    ? `<g${opts.isFaded ? ' opacity="0.5"' : ''}><rect x="10.8" y="-4.4" width="5.2" height="3.2" fill="${b.fill}" stroke="${b.line}" stroke-width="0.35"/>` +
+      `<rect x="11.2" y="-1.4" width="1.2" height="1.1" fill="${b.fill}"/><rect x="10.9" y="-1.2" width="0.35" height="1.1" fill="${b.line}"/>${b.mark}</g>`
     : ''
   const title = opts.title.replace(/[<&>"]/g, ch => `&#${ch.charCodeAt(0)};`)
 

@@ -38,6 +38,10 @@ export type BoardCard = {
   // The first line of its last reply, shown beneath an idle tile while it's newer than the person's last message.
   reply?: string
   focusedAt?: number
+  // Stopped on the person: a permission prompt (for which tool) or a question, and since when.
+  waitingOn?: 'permission' | 'question'
+  waitingTool?: string
+  waitingSince?: number
   agents: BoardAgent[]
   startedAt: number
   updatedAt: number

@@ -2,7 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
-import { ago, asText, beneath, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, signature, summary, taskOf } from './board'
+import type { Bubble } from './board'
+import { ago, asText, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, liveCards, replyOf, roster, signature, summary, taskOf } from './board'
 import { SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
@@ -25,6 +26,8 @@ const FRAME_MS = 300
 const TILE_GAP = 2
 const TILE_MIN = 24
 const TILE_MAX = 44
+const BUBBLE_TITLE = { reply: 'Replied: your turn', permission: 'Waiting for your OK', question: 'Asking you a question' }
+const TERMINAL_MARK = { reply: { text: '💬', color: '#ffffff' }, permission: { text: '!', color: '#ff5555' }, question: { text: '?', color: '#f5b301' } }
 const LIVE = new Set(['pending', 'running', 'waiting', 'idle'])
 const WORKING = new Set(['pending', 'running'])
 
@@ -88,7 +91,7 @@ async function readOthers($: EngineInterface) {
   }
   const list = liveCards(cards, now, card?.session)
   // Redraw only on a real change: each redraw restarts the SVG characters' animation.
-  const sig = signature(list)
+  const sig = signature(list, now)
   if (sig === lastRead) return
   lastRead = sig
   await update($, others, () => list)
@@ -171,6 +174,15 @@ const change = (patch: Partial<BoardCard>) => {
   isDirty = true
 }
 
+const NOT_WAITING = { waitingOn: undefined, waitingTool: undefined, waitingSince: undefined } as const
+
+// Marks the card as stopped on the person, and tells the other boards now rather than at the next flush.
+async function waitOn($: EngineInterface, kind: 'permission' | 'question', tool?: string) {
+  if (!card || card.status !== 'working') return
+  change({ waitingOn: kind, waitingTool: tool, waitingSince: await $.clock.now() })
+  await flush($, true)
+}
+
 const seedOf = (id: string) => [...id].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) % 997, 0)
 
 // Ultracode is a word in the prompt (or the reminder that says it is on), not an effort level.
@@ -224,7 +236,7 @@ export const register: Register = on => {
   on('turn.start', async ($, e, next) => {
     isUltraTurn = isUltra(e.text)
     const now = await $.clock.now()
-    change({ status: 'working', task: taskOf(e.text), activity: 'thinking', since: now, ...(isPrompt(e.text) ? { promptedAt: now } : {}) })
+    change({ status: 'working', task: taskOf(e.text), activity: 'thinking', since: now, ...NOT_WAITING, ...(isPrompt(e.text) ? { promptedAt: now } : {}) })
     return next(e)
   })
 
@@ -250,20 +262,41 @@ export const register: Register = on => {
       delete agentModel[e.agentId]
     } else {
       const reply = replyOf(e.answer ?? '')
-      change({ status: 'idle', activity: undefined, since: undefined, repliedAt: await $.clock.now(), ...(reply ? { reply } : {}) })
+      change({ status: 'idle', activity: undefined, since: undefined, ...NOT_WAITING, repliedAt: await $.clock.now(), ...(reply ? { reply } : {}) })
     }
     isDirty = true
     return next(e)
   })
 
   on('tool.call', async ($, e, next) => {
-    const what = describe(String(e.tool), e as unknown as Record<string, unknown>)
+    const tool = String(e.tool)
+    const what = describe(tool, e as unknown as Record<string, unknown>)
     if (e.agentId) {
       agentActivity[e.agentId] = what
       isDirty = true
     } else change({ activity: what })
-    return next(e)
+    // A question waits on the person from the start; a permission prompt says so itself (below).
+    const isQuestion = !e.agentId && tool === 'AskUserQuestion'
+    if (isQuestion) await waitOn($, 'question')
+    try {
+      return await next(e)
+    } finally {
+      // Answered, allowed or refused: the call this wait was for has gone on.
+      if (card?.waitingOn && (isQuestion || card.waitingTool === tool)) change(NOT_WAITING)
+    }
   })
+
+  // A permission dialog is opening (for the main loop or one of its agents). Its answer arrives
+  // as the tool call going on or being refused.
+  on('classic.PermissionRequest', async ($, e, next) => {
+    await waitOn($, 'permission', e.tool_name)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+  // The terminal's own "needs your permission" notice, in case the dialog's hook doesn't run there.
+  on('classic.Notification', async ($, e, next) => {
+    if (e.notification_type === 'permission_prompt' && !card?.waitingOn) await waitOn($, 'permission')
+    return next(e)
+  }).catch(($, e, next) => next(e))
 
   on('session.end', async ($, e, next) => {
     change({ status: 'ended' })
@@ -298,10 +331,12 @@ export const register: Register = on => {
       state: string
       work: string
       about: string
-      bubble?: boolean
+      bubble?: Bubble
     }
     const tiles: Tile[] = shown.flatMap(c => {
       const isWorking = c.status === 'working'
+      // Never on this session's own tile.
+      const bubble = c === self ? undefined : bubbleOf(c, now)
       const head: Tile = {
         key: `s-${c.session}`,
         name: c === self ? `${c.name} (here)` : c.name,
@@ -309,10 +344,17 @@ export const register: Register = on => {
         effort: c.effort,
         isWorking,
         state: isWorking ? ago(c.since, now) || 'working' : 'idle',
-        work: isWorking ? (c.activity && c.activity !== 'thinking' ? c.activity : c.task ?? 'thinking') : idleLine(c),
+        work: !isWorking
+          ? idleLine(c)
+          : c.waitingOn === 'permission'
+            ? `needs your OK${c.waitingTool ? `: ${c.waitingTool}` : ''}`
+            : c.waitingOn === 'question'
+              ? 'asking you a question'
+              : c.activity && c.activity !== 'thinking'
+                ? c.activity
+                : c.task ?? 'thinking',
         about: isWorking ? c.task ?? '' : idleLine(c),
-        // The last word is theirs: your move. Never on this session's own tile.
-        bubble: c !== self && isYourTurn(c),
+        bubble,
       }
       return [
         head,
@@ -347,7 +389,7 @@ export const register: Register = on => {
       const label = `${t.name} · ${modelName(t.model)} · ${t.effort ?? 'effort unknown'}${t.about ? `\n${t.about}` : ''}`
       return (
         <Svg
-          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\nReplied: your turn` : label, bubble: t.bubble })}
+          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\n${BUBBLE_TITLE[t.bubble.kind]}` : label, bubble: t.bubble?.kind, isFaded: t.bubble?.isFaded })}
           alt={label}
           width={SVG_W}
           height={SVG_H}
@@ -360,7 +402,11 @@ export const register: Register = on => {
       const color = hex(t.isWorking ? modelColor(t.model) : dimmed(modelColor(t.model)))
       return (
         <Box flexDirection="row" columnGap={1} overflow="hidden">
-          {t.bubble && e.surface === 'terminal' ? <Text color="#ffffff">💬</Text> : null}
+          {t.bubble && e.surface === 'terminal' ? (
+            <Text bold color={TERMINAL_MARK[t.bubble.kind].color} dimColor={t.bubble.isFaded}>
+              {TERMINAL_MARK[t.bubble.kind].text}
+            </Text>
+          ) : null}
           <Text bold color={color} wrap="truncate">{t.name}</Text>
           {t.state ? <Text dimColor wrap="truncate">{t.state}</Text> : null}
         </Box>
