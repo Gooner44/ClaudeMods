@@ -38,7 +38,10 @@ async function compactAuto($: EngineInterface, e: SessionCompactInput, next: Nex
   const instructions = [e.instructions?.trim(), TAIL_NOTE].filter(Boolean).join('\n\n')
   const done = await next({ ...e, messages: older, instructions })
   if (done.skip !== undefined) return done
-  return { messages: [...done.messages, ...tail], tokensBefore: done.tokensBefore, usage: done.usage }
+  // Handed back as new messages, not the engine's own: kept as-is, their saved transcript entries stay
+  // linked into the summarized history and a resumed session loses the summary.
+  const kept = tail.map(({ handle, ...m }) => m)
+  return { messages: [...done.messages, ...kept], tokensBefore: done.tokensBefore, usage: done.usage }
 }
 
 // /compact splits too when COMPACT_TAIL_MANUAL=1; otherwise it summarizes everything, as before.

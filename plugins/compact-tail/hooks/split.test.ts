@@ -44,6 +44,14 @@ test('a tail that starts just after a request keeps the request', () => {
   expect(tail[0].text).toBe('Read both files.')
 })
 
+test('the tail always starts at a message in words, never mid-task', () => {
+  const run = [...convo, said('user', 'Now tidy up.'), ...Array.from({ length: 6 }, (_, k) => call(`c${k}`, 'Read', { file_path: `f${k}` }, big(3000))).flat()]
+  const at = cutAt(run, 15_000)!
+  expect(run[at].text).toBe('Now tidy up.')
+  // One long run of tool work with no message near the end: no split, a plain summary instead.
+  expect(cutAt(run, 3000)).toBeUndefined()
+})
+
 test('no split when the older part would be too small to be worth it', () => {
   expect(cutAt(convo, 1_000_000)).toBeUndefined()
   expect(cutAt([said('user', 'hi'), said('assistant', 'hello')], 10)).toBeUndefined()

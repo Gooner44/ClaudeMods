@@ -18,25 +18,33 @@ export const size = (m: SessionMessage) =>
   m.toolUses.reduce((n, u) => n + JSON.stringify(u.input ?? {}).length, 0) +
   (m.toolResults ?? []).reduce((n, r) => n + r.text.length, 0)
 
+// The kept tail may run this far over budget to start at a message rather than mid-task.
+export const TAIL_STRETCH = 1.5
+
+/** A message in words (typed, or text the harness added), not a tool result. */
+const typed = (m: SessionMessage) => m.role === 'user' && !m.toolResults?.length && m.text.trim() !== ''
+
 /**
- * Where the kept tail starts: the earliest message from which the rest fits `budget`, moved later
- * until no tool call is split from its result and the tail starts a message the API would (a user
- * message, or the assistant message right after one). Undefined when no split is worth making.
+ * Where the kept tail starts: at a message in words, never mid-task. Starting mid-task breaks the
+ * saved transcript: Claude Code links the first kept tool result back into the summarized history,
+ * and a resumed session then loses the summary. The message that starts the latest stretch fitting
+ * `budget` comes first (the tail may then run to TAIL_STRETCH times the budget), else the first
+ * message inside it. Undefined when no split is worth making or none of these messages works.
  */
 export function cutAt(messages: readonly SessionMessage[], budget = TAIL_CHARS): number | undefined {
   const sizes = messages.map(size)
   const total = sizes.reduce((a, b) => a + b, 0)
   let i = messages.length, used = 0
   while (i > 0 && used + sizes[i - 1] <= budget) used += sizes[--i]
+  if (i === 0) return undefined
   const split = splitsAPair(messages)
-  for (let j = Math.max(i, 1); j < messages.length; j++) {
-    if (split[j] || (messages[j].role === 'assistant' && messages[j - 1].role !== 'user')) continue
-    // Keep the typed request that started this stretch with it, so the summary doesn't present it as pending.
-    while (j > 1 && messages[j - 1].role === 'user' && !messages[j - 1].toolResults?.length && !split[j - 1]) j--
-    const older = sizes.slice(0, j).reduce((a, b) => a + b, 0)
-    return older >= total * MIN_OLDER_SHARE ? j : undefined
-  }
-  return undefined
+  const starts = (j: number) => j > 0 && j < messages.length && !split[j] && typed(messages[j])
+  const older = (j: number) => sizes.slice(0, j).reduce((a, b) => a + b, 0)
+  let before = i
+  while (before > 0 && !starts(before)) before--
+  let after = i
+  while (after < messages.length && !starts(after)) after++
+  return [before, after].find(j => starts(j) && total - older(j) <= budget * TAIL_STRETCH && older(j) >= total * MIN_OLDER_SHARE)
 }
 
 /** For each index, whether cutting there would part a tool call from its result. */

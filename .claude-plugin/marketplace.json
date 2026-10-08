@@ -29,7 +29,7 @@
       "name": "compact-tail",
       "source": "./plugins/compact-tail",
       "description": "Automatic compaction summarizes only the older part and keeps the latest part word for word; a reopen tool brings back anything summarized",
-      "version": "0.1.0"
+      "version": "0.1.1"
     }
   ]
 }

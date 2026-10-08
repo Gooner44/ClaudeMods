@@ -6,7 +6,7 @@ When a long Claude Code session fills up, it compacts: everything so far becomes
 
 On an automatic compaction:
 
-1. **Splits the conversation.** About the last 90,000 characters (roughly 30k tokens) stay exactly as they were. The cut never separates a tool call from its result. If it lands just after one of your messages, that message is kept too.
+1. **Splits the conversation.** About the last 90,000 characters (roughly 30k tokens) stay exactly as they were. The kept part always starts at one of your messages, never in the middle of a task. Usually that's the message that started the latest work, which can make it up to half again as long. Starting mid-task would break the saved transcript, and a resumed session would lose its summary.
 2. **Archives the older part** to `~/.claude/compact-tail/<session>/`, tool output included, in full.
 3. **Summarizes the older part** with Claude Code's own compaction. The summary is told the conversation continues word for word after it. With [compact-brief](../compact-brief/README.md) on, the summary also keeps your words first.
 4. **Gives Claude a `reopen` tool.** It searches the archive by text (a file path, a command, an error, a phrase you used) and returns the original output word for word. It can also return one call's whole output by its id.
@@ -21,6 +21,7 @@ We replayed 36 real compactions from our own sessions. Swapping old tool output 
 
 - **`/compact`** summarizes everything, as before. Set `COMPACT_TAIL_MANUAL=1` to have it split too.
 - **Too little to summarize:** when the older part would be under 30% of the conversation, the whole thing is summarized as usual.
+- **One long run of tool work:** when no message of yours is recent enough to start the kept part, the whole thing is summarized as usual.
 - **Errors:** if anything goes wrong, compaction runs as it would without the mod.
 - **Precompute:** Claude Code's background pre-summary is skipped, so the split happens at the real compaction. That can make an automatic compaction take a few seconds longer.
 
@@ -29,7 +30,7 @@ We replayed 36 real compactions from our own sessions. Swapping old tool output 
 - `COMPACT_TAIL_CHARS`: how many characters stay word for word (default 90000).
 - `COMPACT_TAIL_MANUAL=1`: `/compact` splits as well.
 
-To change the defaults, edit `TAIL_CHARS` and `MIN_OLDER_SHARE` in `hooks/split.ts`.
+To change the defaults, edit `TAIL_CHARS`, `TAIL_STRETCH` and `MIN_OLDER_SHARE` in `hooks/split.ts`.
 
 ## Privacy
 
