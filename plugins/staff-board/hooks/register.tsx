@@ -174,12 +174,12 @@ const change = (patch: Partial<BoardCard>) => {
   isDirty = true
 }
 
-const NOT_WAITING = { waitingOn: undefined, waitingTool: undefined, waitingSince: undefined } as const
+const NOT_WAITING = { waitingOn: undefined, waitingTool: undefined, waitingSince: undefined, question: undefined } as const
 
 // Marks the card as stopped on the person, and tells the other boards now rather than at the next flush.
-async function waitOn($: EngineInterface, kind: 'permission' | 'question', tool?: string) {
+async function waitOn($: EngineInterface, kind: 'permission' | 'question', tool?: string, question?: string) {
   if (!card || card.status !== 'working') return
-  change({ waitingOn: kind, waitingTool: tool, waitingSince: await $.clock.now() })
+  change({ waitingOn: kind, waitingTool: tool, question: question?.slice(0, 200), waitingSince: await $.clock.now() })
   await flush($, true)
 }
 
@@ -277,7 +277,7 @@ export const register: Register = on => {
     } else change({ activity: what })
     // A question waits on the person from the start; a permission prompt says so itself (below).
     const isQuestion = !e.agentId && tool === 'AskUserQuestion'
-    if (isQuestion) await waitOn($, 'question')
+    if (isQuestion) await waitOn($, 'question', undefined, (e as unknown as { questions?: { question?: string }[] }).questions?.[0]?.question)
     try {
       return await next(e)
     } finally {
@@ -347,9 +347,9 @@ export const register: Register = on => {
         work: !isWorking
           ? idleLine(c)
           : c.waitingOn === 'permission'
-            ? `needs your OK${c.waitingTool ? `: ${c.waitingTool}` : ''}`
+            ? 'waiting on permission'
             : c.waitingOn === 'question'
-              ? 'asking you a question'
+              ? c.question ? `asks: ${c.question}` : 'asking you a question'
               : c.activity && c.activity !== 'thinking'
                 ? c.activity
                 : c.task ?? 'thinking',

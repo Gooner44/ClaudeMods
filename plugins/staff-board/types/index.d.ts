@@ -41,6 +41,8 @@ export type BoardCard = {
   // Stopped on the person: a permission prompt (for which tool) or a question, and since when.
   waitingOn?: 'permission' | 'question'
   waitingTool?: string
+  // The question it asked, as the person reads it.
+  question?: string
   waitingSince?: number
   agents: BoardAgent[]
   startedAt: number

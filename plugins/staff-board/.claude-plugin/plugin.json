@@ -1,6 +1,6 @@
 {
   "name": "staff-board",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A compact band of your sessions (Claude, Aesop, named desktop sessions and what they spawn): Clawds coloured by model, glowing by effort, each with its current work",
   "author": {
     "name": "Tarl Raney"
