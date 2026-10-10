@@ -81,7 +81,8 @@ export function verbOf(tool: string | undefined, status: string): string {
 
 // Pretend agents for the band demo (/staff-demo, and ClaudeDash's "Demo agents" button; Tarl, 2026-10-10:
 // see the small figures without spending real agent time). Five of them, each on a random tool, model
-// and effort, re-rolled on every call so the words and glows change while the demo runs.
+// and effort. The tool and state are re-rolled on every call so the words change; the model and effort
+// stay fixed per figure, as a real agent's do, so the colour and glow mean the same as everywhere else.
 export const DEMO_MS = 10_000
 const DEMO_NAMES = ['Explore', 'Plan', 'general-purpose', 'Scully', 'Quinn']
 const DEMO_TOOLS: (string | undefined)[] = ['Bash', 'Read', 'Edit', 'Write', 'Grep', 'WebFetch', 'Agent', 'mcp__clickup__get_task', undefined]
@@ -99,8 +100,8 @@ export function demoAgents(): BoardAgent[] {
       status: Math.random() < 0.12 ? 'waiting' : 'running',
       tool,
       activity: tool ? describe(tool, { file_path: 'demo.ts', pattern: 'demo', description: 'pretend', url: 'https://example.com', query: 'demo', command: 'echo' }) : undefined,
-      model: pick(DEMO_MODELS),
-      effort: pick(DEMO_EFFORTS),
+      model: DEMO_MODELS[i % DEMO_MODELS.length],
+      effort: DEMO_EFFORTS[i % DEMO_EFFORTS.length],
     }
   })
 }

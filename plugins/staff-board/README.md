@@ -37,7 +37,7 @@ Unnamed one-off sessions and background jobs stay off the band. `/staff` still l
 
 ### `/staff-demo`
 
-Puts five pretend agents after this session's tile for ten seconds, each on a random tool, model and effort, re-rolled every second, so you can see the small figures without spending real agent time. Every band on the PC shows them. Nothing runs. (ClaudeDash has the same as a "Demo agents" button.)
+Puts five pretend agents after this session's tile for ten seconds, each with its own model and effort (fixed, like a real agent's) and a random tool re-rolled every second, so you can see the small figures without spending real agent time. Every band on the PC shows them. Nothing runs. (ClaudeDash has the same as a "Demo agents" button.)
 
 ### The status line
 

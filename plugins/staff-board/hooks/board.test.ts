@@ -35,6 +35,12 @@ test('the demo makes five pretend agents, each with a word', () => {
     expect(['running', 'waiting'].includes(a.status)).toBe(true)
     expect(verbOf(a.tool, a.status).length > 0).toBe(true)
   }
+  // Colour and glow are fixed per figure: a second roll keeps every model and effort.
+  const again = demoAgents()
+  for (let i = 0; i < 5; i++) {
+    expect(again[i]!.model).toBe(agents[i]!.model)
+    expect(again[i]!.effort).toBe(agents[i]!.effort)
+  }
 })
 
 test('a tool call reads as a few words', () => {

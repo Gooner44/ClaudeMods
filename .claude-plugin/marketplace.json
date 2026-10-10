@@ -17,7 +17,7 @@
       "name": "staff-board",
       "source": "./plugins/staff-board",
       "description": "Every Claude Code session on your PC as a little Clawd above the prompt: coloured by model, glowing by effort, with what it is doing and its agents",
-      "version": "0.7.1"
+      "version": "0.7.2"
     },
     {
       "name": "compact-brief",
