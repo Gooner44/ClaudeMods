@@ -1,4 +1,4 @@
-import type { BoardCard } from '../types'
+import type { BoardAgent, BoardCard } from '../types'
 
 // A card older than this is a session that closed without saying so (a crash, a reboot).
 export const STALE_MS = 90_000
@@ -77,6 +77,32 @@ export function verbOf(tool: string | undefined, status: string): string {
       return (mcp ? mcp[1]! : tool).toLowerCase().slice(0, 10)
     }
   }
+}
+
+// Pretend agents for the band demo (/staff-demo, and ClaudeDash's "Demo agents" button; Tarl, 2026-10-10:
+// see the small figures without spending real agent time). Five of them, each on a random tool, model
+// and effort, re-rolled on every call so the words and glows change while the demo runs.
+export const DEMO_MS = 10_000
+const DEMO_NAMES = ['Explore', 'Plan', 'general-purpose', 'Scully', 'Quinn']
+const DEMO_TOOLS: (string | undefined)[] = ['Bash', 'Read', 'Edit', 'Write', 'Grep', 'WebFetch', 'Agent', 'mcp__clickup__get_task', undefined]
+const DEMO_MODELS = ['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']
+const DEMO_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
+const pick = <T>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)] as T
+export function demoAgents(): BoardAgent[] {
+  return DEMO_NAMES.map((label, i) => {
+    const tool = pick(DEMO_TOOLS)
+    return {
+      id: `demo-${i}`,
+      label,
+      job: 'pretend work for the band demo',
+      type: 'demo',
+      status: Math.random() < 0.12 ? 'waiting' : 'running',
+      tool,
+      activity: tool ? describe(tool, { file_path: 'demo.ts', pattern: 'demo', description: 'pretend', url: 'https://example.com', query: 'demo', command: 'echo' }) : undefined,
+      model: pick(DEMO_MODELS),
+      effort: pick(DEMO_EFFORTS),
+    }
+  })
 }
 
 // The first line of a prompt, as the task a session is on. Desktop-app sessions put

@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
 import type { Bubble } from './board'
-import { ago, asText, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, liveCards, replyOf, roster, signature, summary, taskOf, verbOf } from './board'
+import { DEMO_MS, ago, asText, beneath, bubbleOf, demoAgents, describe, desktopMeta, idleLine, isPrompt, liveCards, replyOf, roster, signature, summary, taskOf, verbOf } from './board'
 import { SMALL_H, SMALL_W, SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
@@ -24,6 +24,8 @@ const READ_MS = 5_000
 const META_MS = 10_000
 const META_SCANS = 5
 const FRAME_MS = 300
+// /staff-demo re-rolls its pretend agents this often.
+const DEMO_TICK_MS = 1_000
 const TILE_GAP = 2
 const TILE_MIN = 24
 const TILE_MAX = 44
@@ -47,6 +49,9 @@ let metaScans = 0
 let isUltraTurn = false
 const agentActivity: Record<string, string> = {}
 const agentTool: Record<string, string> = {}
+// /staff-demo: pretend agents on this card until then (0 = none).
+let demoUntil = 0
+let demo: BoardAgent[] = []
 const agentModel: Record<string, { model?: string; effort?: string }> = {}
 
 // The terminal sprites the band last drew, repainted in place each frame by $.ui.blit.
@@ -70,6 +75,7 @@ async function flush($: EngineInterface, force = false) {
       tool: agentTool[a.id],
       ...agentModel[a.id],
     }))
+  if (demo.length) agents.push(...demo)
   // A job is a session nothing draws on (a claude -p run); the desktop app and the phone attach
   // surfaces, so their sessions count as people-facing even when the SDK started them, and a
   // session the desktop app keeps is never a job, attached or not.
@@ -173,6 +179,19 @@ async function animate($: EngineInterface) {
   }
 }
 
+// While /staff-demo runs: new random work for the pretend agents every second, written at once so
+// every band sees it; then they go.
+async function demoTick($: EngineInterface) {
+  if (!demoUntil) return
+  const now = await $.clock.now()
+  if (now >= demoUntil) {
+    demoUntil = 0
+    demo = []
+  } else demo = demoAgents()
+  isDirty = true
+  await flush($, true)
+}
+
 const change = (patch: Partial<BoardCard>) => {
   if (!card) return
   card = { ...card, ...patch }
@@ -232,6 +251,8 @@ export const register: Register = on => {
     // Every session reads and draws the board: one started by the desktop app or the SDK is not
     // interactive yet still has a person watching. A -p job reads a folder every 5 s and draws nothing.
     await $.command.register({ name: 'staff', description: 'List every session on this PC and the agents each is running' })
+    await $.command.register({ name: 'staff-demo', description: 'Put five pretend agents on the band for ten seconds (nothing runs)' })
+    $.clock.every(DEMO_TICK_MS, () => void demoTick($))
     void readOthers($)
     $.clock.every(READ_MS, () => void readOthers($))
     $.clock.every(FRAME_MS, () => void animate($))
@@ -316,6 +337,15 @@ export const register: Register = on => {
     await flush($, true)
     await readOthers($)
     return { text: asText(await read($, me), await read($, others), await $.clock.now()) }
+  })
+
+  // Five pretend agents after this session's tile for ten seconds, so the small figures can be seen
+  // without spending real agent time (Tarl, 2026-10-10). Every band on the PC shows them too.
+  on('command.run', { command: 'staff-demo' }, async $ => {
+    demoUntil = (await $.clock.now()) + DEMO_MS
+    demo = demoAgents()
+    await flush($, true)
+    return { text: 'Five pretend agents are on the band for the next ten seconds. Nothing is running.' }
   })
 
   // The band: whatever the plugins beneath drew, then a row of tiles, one per character.

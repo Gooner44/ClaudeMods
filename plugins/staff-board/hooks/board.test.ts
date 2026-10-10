@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { FADE_MS, asText, sawReply, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf, verbOf } from './board'
+import { FADE_MS, asText, sawReply, beneath, bubbleOf, demoAgents, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf, verbOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -25,6 +25,16 @@ test('an agent gets one word: its tool while it runs one, else its state', () =>
   expect(verbOf(undefined, 'running')).toBe('thinking')
   expect(verbOf('Bash', 'pending')).toBe('starting')
   expect(verbOf('Bash', 'waiting')).toBe('waiting')
+})
+
+test('the demo makes five pretend agents, each with a word', () => {
+  const agents = demoAgents()
+  expect(agents.length).toBe(5)
+  for (const a of agents) {
+    expect(a.id.startsWith('demo-')).toBe(true)
+    expect(['running', 'waiting'].includes(a.status)).toBe(true)
+    expect(verbOf(a.tool, a.status).length > 0).toBe(true)
+  }
 })
 
 test('a tool call reads as a few words', () => {

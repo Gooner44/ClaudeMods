@@ -35,6 +35,10 @@ To keep it short, the band shows only:
 
 Unnamed one-off sessions and background jobs stay off the band. `/staff` still lists them.
 
+### `/staff-demo`
+
+Puts five pretend agents after this session's tile for ten seconds, each on a random tool, model and effort, re-rolled every second, so you can see the small figures without spending real agent time. Every band on the PC shows them. Nothing runs. (ClaudeDash has the same as a "Demo agents" button.)
+
 ### The status line
 
 The sessions on the band at a glance, for example `Aesop working · 1 agent`.
