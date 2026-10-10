@@ -170,9 +170,19 @@ export function desktopMeta(text: string, session: string): DesktopMeta | null {
 }
 
 // The person's move: the session's reply is the last word, newer than their last message to it
-// (Tarl, 2026-10-07). Not "unread": no session can tell when it's looked at (a terminal one, or the
-// desktop app's view of it), so the bubble stays until they write back. Jobs and working sessions never show it.
+// (Tarl, 2026-10-07). Jobs and working sessions never show it.
 export const isYourTurn = (c: BoardCard) => !c.isJob && c.status === 'idle' && !!c.repliedAt && c.repliedAt > (c.promptedAt ?? 0)
+
+// Whether the person has had this desktop session open since it replied (0.6.2, Tarl 2026-10-09: the terminal
+// sessions are retired, so switching to the session counts as seeing the reply). The app stamps lastFocusedAt when
+// they switch to a session, not while they stay on it, so a session counts as open from its stamp until another
+// session's later stamp, or until now when none came after. A terminal session has no stamp and keeps its bubble
+// until they write back; a reply read on the phone doesn't count either.
+export function sawReply(c: BoardCard, all: BoardCard[]): boolean {
+  if (!c.desktopId || !c.focusedAt || !c.repliedAt) return false
+  const left = all.filter(o => o.session !== c.session && (o.focusedAt ?? 0) > c.focusedAt!).map(o => o.focusedAt!)
+  return c.repliedAt < (left.length ? Math.min(...left) : Infinity)
+}
 
 // A turn the person started, not one a background task or an agent's message started.
 export const isPrompt = (text: string) => !/^\s*</.test(text.replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/g, ''))
@@ -184,11 +194,12 @@ export type Bubble = { kind: 'permission' | 'question' | 'reply'; isFaded: boole
 
 // What the session wants from the person, most urgent first: an OK at a permission prompt, an
 // answer to its question, or a reply to its reply.
-export function bubbleOf(c: BoardCard, now: number): Bubble | undefined {
+// `all` is every live card, this session's own included, for the focus stamps (see sawReply).
+export function bubbleOf(c: BoardCard, now: number, all: BoardCard[] = []): Bubble | undefined {
   if (c.isJob) return undefined
   const at = (kind: Bubble['kind'], since: number) => ({ kind, isFaded: now - since >= FADE_MS })
   if (c.status === 'working' && c.waitingOn) return at(c.waitingOn, c.waitingSince ?? now)
-  return isYourTurn(c) ? at('reply', c.repliedAt!) : undefined
+  return isYourTurn(c) && !sawReply(c, all) ? at('reply', c.repliedAt!) : undefined
 }
 
 // A card's content without its heartbeat, to tell whether a re-read changed anything (a bubble

@@ -317,7 +317,9 @@ export const register: Register = on => {
     const result = await next(e)
     const below = beneath(result)
     const self = await read($, me)
-    const shown = [...(self ? [self] : []), ...roster(await read($, others), self)]
+    const everyone = await read($, others)
+    const all = [...(self ? [self] : []), ...everyone]
+    const shown = [...(self ? [self] : []), ...roster(everyone, self)]
     const now = await $.clock.now()
     const { Box, Text } = $.ui.resolve(e)
     const cols = e.props.bodyColumns
@@ -336,7 +338,7 @@ export const register: Register = on => {
     const tiles: Tile[] = shown.flatMap(c => {
       const isWorking = c.status === 'working'
       // Never on this session's own tile.
-      const bubble = c === self ? undefined : bubbleOf(c, now)
+      const bubble = c === self ? undefined : bubbleOf(c, now, all)
       const head: Tile = {
         key: `s-${c.session}`,
         name: c === self ? `${c.name} (here)` : c.name,

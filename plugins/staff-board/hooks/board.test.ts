@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { FADE_MS, asText, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf } from './board'
+import { FADE_MS, asText, sawReply, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -100,7 +100,6 @@ test('desktop metadata counts a title as named only when the app did not choose 
 
 test('the bubble shows while the session had the last word, terminal or desktop', () => {
   expect(isYourTurn(card({ repliedAt: NOW, promptedAt: NOW - 5_000 }))).toBe(true)
-  expect(isYourTurn(card({ desktopId: 'local_1', repliedAt: NOW, promptedAt: NOW - 5_000, focusedAt: NOW + 1_000 }))).toBe(true)
   expect(isYourTurn(card({ repliedAt: NOW - 5_000, promptedAt: NOW }))).toBe(false)
   expect(isYourTurn(card({ repliedAt: NOW, status: 'working' }))).toBe(false)
   expect(isYourTurn(card({ repliedAt: NOW, isJob: true }))).toBe(false)
@@ -130,4 +129,23 @@ test('a bubble asks for the most urgent thing and fades after ten minutes', () =
   expect(bubbleOf(card({ repliedAt: NOW - FADE_MS - 1, promptedAt: NOW - FADE_MS - 9_000 }), NOW)?.isFaded).toBe(true)
   expect(bubbleOf(card({ status: 'working' }), NOW)).toBeUndefined()
   expect(bubbleOf({ ...asking, isJob: true }, NOW)).toBeUndefined()
+})
+
+test('switching to a desktop session clears its reply bubble (0.6.2)', () => {
+  const replied = card({ session: 'a', desktopId: 'local_a', repliedAt: NOW, promptedAt: NOW - 5_000 })
+  // Switched to it after the reply: seen.
+  expect(sawReply({ ...replied, focusedAt: NOW + 1_000 }, [])).toBe(true)
+  // On it when the reply came, and still on it: seen.
+  expect(sawReply({ ...replied, focusedAt: NOW - 9_000 }, [])).toBe(true)
+  // On it, then switched to another session before the reply: not seen.
+  const other = card({ session: 'b', desktopId: 'local_b', focusedAt: NOW - 2_000 })
+  expect(sawReply({ ...replied, focusedAt: NOW - 9_000 }, [other])).toBe(false)
+  // ...and switching to the other one after the reply doesn't undo having seen it.
+  expect(sawReply({ ...replied, focusedAt: NOW - 9_000 }, [{ ...other, focusedAt: NOW + 3_000 }])).toBe(true)
+  // A terminal session (no desktop record) keeps its bubble until the person writes back.
+  expect(sawReply({ ...replied, desktopId: undefined, focusedAt: NOW + 1_000 }, [])).toBe(false)
+  expect(bubbleOf({ ...replied, focusedAt: NOW + 1_000 }, NOW, [])).toBeUndefined()
+  expect(bubbleOf({ ...replied, focusedAt: NOW - 9_000 }, NOW, [other])?.kind).toBe('reply')
+  // A permission prompt or a question still needs an answer, open or not.
+  expect(bubbleOf({ ...replied, status: 'working', waitingOn: 'question', waitingSince: NOW, focusedAt: NOW + 1_000 }, NOW, [])?.kind).toBe('question')
 })
