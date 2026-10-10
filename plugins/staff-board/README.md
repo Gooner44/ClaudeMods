@@ -6,7 +6,7 @@ See every Claude Code session on your PC at once: which ones are working, what e
 
 ### The band above the prompt
 
-One tile per character: this session first (marked "(here)"), then your other sessions, each followed by the agents it's running (marked "↳").
+One tile per session: this session first (marked "(here)"), then your other sessions. The agents a session is running follow it as smaller figures (0.7).
 
 | Part of the tile | What it tells you |
 |---|---|
@@ -18,6 +18,10 @@ One tile per character: this session first (marked "(here)"), then your other se
 | **A bubble by the head** (0.6) | The session is waiting on you. **Red with "!"**: it's stuck at a permission prompt, and the line beneath says "waiting on permission". **Amber with "?"**: it asked you a question, and the line beneath shows the question ("asks: …"). **White with "…"**: it replied after your last message to it, so it's your move. In the desktop app the white bubble clears once you've had that session open since it replied: switching to it counts (0.6.2), and so does already being on it when the reply lands. A terminal session, or a reply you read on the phone, keeps its bubble until you write back. Red and amber bubbles clear once you answer, and fades to half strength after it's been up 10 minutes. In the terminal band, a red `!`, an amber `?` or a 💬 sits before the name. This session's own tile never shows one. |
 
 In the desktop app, hover a character for its model, effort and full task. A session's glow appears after its first model request.
+
+### Agents (0.7)
+
+Each agent a session runs is a Clawd two thirds the size, in its model's colour, pacing back and forth while it works, with one word beneath for what it's doing: `bash`, `reading`, `writing`, `searching`, `browsing`, `delegating`, `thinking`, the server's name for an MCP tool, or `starting` and `waiting` while it isn't running. That's all the band shows about an agent; hover the figure for its name, its job and the exact call. `/staff` lists the full line for each.
 
 The band sits under usage-bar's meters when both are installed. Collapse it with `[-]`, or ctrl+x ctrl+a.
 

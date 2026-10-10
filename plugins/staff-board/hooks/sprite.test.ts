@@ -1,6 +1,15 @@
 import { expect, test } from 'claude-code/testing'
 
-import { SPRITE_COLUMNS, SPRITE_ROWS, cells, frameFor, modelColor, modelName, svgClawd } from './sprite'
+import { SMALL_H, SMALL_W, SPRITE_COLUMNS, SPRITE_ROWS, SVG_W, cells, frameFor, modelColor, modelName, svgClawd } from './sprite'
+
+test('a small working figure is drawn smaller and paces; an idle one stands still', () => {
+  const busy = svgClawd({ model: 'claude-sonnet-5-5', isWorking: true, seed: 3, title: 'Explore', isSmall: true })
+  expect(busy.includes(`width="${SMALL_W}" height="${SMALL_H}"`)).toBe(true)
+  expect(busy.includes('animateTransform')).toBe(true)
+  const idle = svgClawd({ model: 'claude-sonnet-5-5', isWorking: false, seed: 3, title: 'Explore', isSmall: true })
+  expect(idle.includes('animateTransform')).toBe(false)
+  expect(svgClawd({ model: 'claude-sonnet-5-5', isWorking: true, seed: 3, title: 'Claude' }).includes(`width="${SVG_W}"`)).toBe(true)
+})
 
 test('every terminal frame packs to one full Raster of cells', () => {
   const bytes = SPRITE_COLUMNS * SPRITE_ROWS * 3 * 4

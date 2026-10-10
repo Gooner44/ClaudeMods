@@ -3,8 +3,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
 import type { Bubble } from './board'
-import { ago, asText, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, liveCards, replyOf, roster, signature, summary, taskOf } from './board'
-import { SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
+import { ago, asText, beneath, bubbleOf, describe, desktopMeta, idleLine, isPrompt, liveCards, replyOf, roster, signature, summary, taskOf, verbOf } from './board'
+import { SMALL_H, SMALL_W, SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
 // everyone else's, so Claude sees what Aesop is doing and the reverse; background jobs
@@ -12,7 +12,8 @@ import { SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex
 // claude-job.js, names the session; a desktop-app session takes the title the person gave it.
 // The band shows the staff, named sessions and what they spawned, one compact tile each: a
 // little Clawd in its model's colour, glowing with its effort, its name beside it and its work
-// beneath.
+// beneath. The agents a session runs are smaller figures after it, pacing while they work, with
+// one word for what they do (Tarl, 2026-10-10: see that they are busy, not what with).
 const me = atom({ plugin: 'staff-board', key: 'me' } as const, null as BoardCard | null)
 const others = atom({ plugin: 'staff-board', key: 'others' } as const, [] as BoardCard[])
 
@@ -26,6 +27,8 @@ const FRAME_MS = 300
 const TILE_GAP = 2
 const TILE_MIN = 24
 const TILE_MAX = 44
+// An agent's tile: the small figure over one word.
+const AGENT_W = 10
 const BUBBLE_TITLE = { reply: 'Replied: your turn', permission: 'Waiting for your OK', question: 'Asking you a question' }
 const TERMINAL_MARK = { reply: { text: '💬', color: '#ffffff' }, permission: { text: '!', color: '#ff5555' }, question: { text: '?', color: '#f5b301' } }
 const LIVE = new Set(['pending', 'running', 'waiting', 'idle'])
@@ -43,6 +46,7 @@ let metaPath = ''
 let metaScans = 0
 let isUltraTurn = false
 const agentActivity: Record<string, string> = {}
+const agentTool: Record<string, string> = {}
 const agentModel: Record<string, { model?: string; effort?: string }> = {}
 
 // The terminal sprites the band last drew, repainted in place each frame by $.ui.blit.
@@ -63,6 +67,7 @@ async function flush($: EngineInterface, force = false) {
       type: a.type,
       status: a.status,
       activity: agentActivity[a.id],
+      tool: agentTool[a.id],
       ...agentModel[a.id],
     }))
   // A job is a session nothing draws on (a claude -p run); the desktop app and the phone attach
@@ -259,6 +264,7 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     if (e.agentId) {
       delete agentActivity[e.agentId]
+      delete agentTool[e.agentId]
       delete agentModel[e.agentId]
     } else {
       const reply = replyOf(e.answer ?? '')
@@ -273,6 +279,7 @@ export const register: Register = on => {
     const what = describe(tool, e as unknown as Record<string, unknown>)
     if (e.agentId) {
       agentActivity[e.agentId] = what
+      agentTool[e.agentId] = tool
       isDirty = true
     } else change({ activity: what })
     // A question waits on the person from the start; a permission prompt says so itself (below).
@@ -334,6 +341,8 @@ export const register: Register = on => {
       work: string
       about: string
       bubble?: Bubble
+      // An agent: the small figure over one word.
+      isSmall?: boolean
     }
     const tiles: Tile[] = shown.flatMap(c => {
       const isWorking = c.status === 'working'
@@ -362,21 +371,25 @@ export const register: Register = on => {
         head,
         ...c.agents.map(a => ({
           key: `a-${a.id}`,
-          name: `↳ ${a.label}`,
+          name: a.label,
           model: a.model ?? c.model,
           effort: a.effort,
           isWorking: WORKING.has(a.status),
-          state: a.status === 'running' ? '' : a.status,
-          work: a.activity ?? a.job,
-          about: `${a.job} (agent of ${c.name})`,
+          state: '',
+          work: verbOf(a.tool, a.status),
+          about: `${a.label}: ${a.job}${a.activity ? ` · ${a.activity}` : ''} (agent of ${c.name})`,
+          isSmall: true,
         })),
       ]
     })
     if (tiles.length === 0) return result
 
-    const perRow = Math.max(1, Math.floor((cols + TILE_GAP) / (TILE_MIN + TILE_GAP)))
-    const across = Math.min(tiles.length, perRow)
-    const tileW = Math.max(TILE_MIN, Math.min(TILE_MAX, Math.floor((cols + TILE_GAP) / across) - TILE_GAP))
+    // The sessions share the width the agents' small tiles leave.
+    const heads = tiles.filter(t => !t.isSmall).length
+    const roomLeft = Math.max(TILE_MIN, cols - tiles.filter(t => t.isSmall).length * (AGENT_W + TILE_GAP))
+    const perRow = Math.max(1, Math.floor((roomLeft + TILE_GAP) / (TILE_MIN + TILE_GAP)))
+    const across = Math.max(1, Math.min(heads, perRow))
+    const tileW = Math.max(TILE_MIN, Math.min(TILE_MAX, Math.floor((roomLeft + TILE_GAP) / across) - TILE_GAP))
     const drawn: typeof sprites = []
 
     const sprite = (t: Tile) => {
@@ -391,10 +404,10 @@ export const register: Register = on => {
       const label = `${t.name} · ${modelName(t.model)} · ${t.effort ?? 'effort unknown'}${t.about ? `\n${t.about}` : ''}`
       return (
         <Svg
-          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\n${BUBBLE_TITLE[t.bubble.kind]}` : label, bubble: t.bubble?.kind, isFaded: t.bubble?.isFaded })}
+          source={svgClawd({ model: t.model, effort: t.effort, isWorking: t.isWorking, seed, title: t.bubble ? `${label}\n${BUBBLE_TITLE[t.bubble.kind]}` : label, bubble: t.bubble?.kind, isFaded: t.bubble?.isFaded, isSmall: t.isSmall })}
           alt={label}
-          width={SVG_W}
-          height={SVG_H}
+          width={t.isSmall ? SMALL_W : SVG_W}
+          height={t.isSmall ? SMALL_H : SVG_H}
           isInteractive
         />
       )
@@ -415,10 +428,24 @@ export const register: Register = on => {
       )
     }
 
+    // An agent: the small figure with its word, beside it in the terminal, beneath it elsewhere.
+    const small = (t: Tile) =>
+      e.surface === 'terminal' ? (
+        <Box key={t.key} flexDirection="row" width={SPRITE_COLUMNS + 1 + AGENT_W} height={SPRITE_ROWS} columnGap={1} flexShrink={0}>
+          {sprite(t)}
+          <Text dimColor={!t.isWorking} wrap="truncate">{t.work}</Text>
+        </Box>
+      ) : (
+        <Box key={t.key} flexDirection="column" width={AGENT_W} flexShrink={0} overflow="hidden" alignItems="center">
+          {sprite(t)}
+          <Text dimColor={!t.isWorking} wrap="truncate">{t.work}</Text>
+        </Box>
+      )
+
     // Terminal: the 2-row character beside its name and work. Elsewhere: character and name on
     // top, the work beneath.
     const tile = (t: Tile) =>
-      e.surface === 'terminal' ? (
+      t.isSmall ? small(t) : e.surface === 'terminal' ? (
         <Box key={t.key} flexDirection="row" width={tileW} height={SPRITE_ROWS} columnGap={1} flexShrink={0}>
           {sprite(t)}
           <Box flexDirection="column" width={tileW - SPRITE_COLUMNS - 1} overflow="hidden">

@@ -40,6 +40,45 @@ export function describe(tool: string, input: Record<string, unknown>): string {
   }
 }
 
+// One word for what an agent is doing (Tarl, 2026-10-10: agents are small figures with a word, not a
+// line): the tool's verb while it runs one, else its state.
+export function verbOf(tool: string | undefined, status: string): string {
+  if (status === 'pending') return 'starting'
+  if (status !== 'running') return status
+  switch (tool) {
+    case undefined:
+    case '':
+      return 'thinking'
+    case 'Bash':
+    case 'PowerShell':
+      return 'bash'
+    case 'Read':
+      return 'reading'
+    case 'Edit':
+    case 'Write':
+    case 'NotebookEdit':
+      return 'writing'
+    case 'Grep':
+    case 'Glob':
+      return 'searching'
+    case 'WebFetch':
+    case 'WebSearch':
+      return 'browsing'
+    case 'Agent':
+      return 'delegating'
+    case 'Skill':
+      return 'skill'
+    case 'TodoWrite':
+      return 'planning'
+    case 'AskUserQuestion':
+      return 'asking'
+    default: {
+      const mcp = tool.match(/^mcp__(.+?)__/)
+      return (mcp ? mcp[1]! : tool).toLowerCase().slice(0, 10)
+    }
+  }
+}
+
 // The first line of a prompt, as the task a session is on. Desktop-app sessions put
 // <system-reminder>…</system-reminder> blocks in front of what the person typed, and the text
 // itself may sit inside a <tag>…</tag> wrapper; the reminders are not the job, so they go whole,

@@ -7,6 +7,8 @@ export type BoardAgent = {
   type: string
   status: string
   activity?: string
+  // The tool its loop last called (0.7), for the one-word tile.
+  tool?: string
   // The model and effort its last request ran on ('ultracode' when its turn asked for it).
   model?: string
   effort?: string

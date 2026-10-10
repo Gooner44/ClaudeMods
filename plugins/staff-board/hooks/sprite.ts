@@ -165,6 +165,9 @@ const flip = (i: number, n: number, step: number, phase: number) => {
 
 export const SVG_W = 36
 export const SVG_H = 24
+// An agent's figure: two thirds the size, pacing back and forth while it works (0.7).
+export const SMALL_W = 24
+export const SMALL_H = 16
 
 // The SVG character: the model's colour, the effort's glow, walking while it works.
 // The bubble's fill, outline and mark: a reply's three dots, a permission prompt's "!", a question's "?".
@@ -197,6 +200,8 @@ export function svgClawd(opts: {
   // `true` is a reply's bubble (ClaudeDash before 0.6 passes that).
   bubble?: boolean | keyof typeof BUBBLES
   isFaded?: boolean
+  // A small figure that paces while it works: an agent.
+  isSmall?: boolean
 }): string {
   const rgb = modelColor(opts.model)
   const color = hex(rgb)
@@ -251,12 +256,19 @@ export function svgClawd(opts: {
       `<rect x="11.2" y="-1.4" width="1.2" height="1.1" fill="${b.fill}"/><rect x="10.9" y="-1.2" width="0.35" height="1.1" fill="${b.line}"/>${b.mark}</g>`
     : ''
   const title = opts.title.replace(/[<&>"]/g, ch => `&#${ch.charCodeAt(0)};`)
+  // A small working figure walks a few pixels right and back, each at its own pace.
+  const scene = `${back}${groups}${blink}${bubble}`
+  const pace = opts.isSmall && opts.isWorking
+    ? `<g><animateTransform attributeName="transform" type="translate" values="-3 0;3 0;-3 0" dur="${(2.4 + (opts.seed % 5) * 0.3).toFixed(1)}s" begin="-${(phase * 4).toFixed(2)}s" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite"/>${scene}</g>`
+    : scene
+  const w = opts.isSmall ? SMALL_W : SVG_W
+  const h = opts.isSmall ? SMALL_H : SVG_H
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4.5 -4.6 21 14" width="${SVG_W}" height="${SVG_H}" shape-rendering="crispEdges" style="color-scheme:light dark;background:transparent">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4.5 -4.6 21 14" width="${w}" height="${h}" shape-rendering="crispEdges" style="color-scheme:light dark;background:transparent">` +
     // The interactive drawing sits in its own frame; a frame whose colour scheme differs from the
     // app's gets an opaque white backdrop in dark mode, so the SVG takes whichever scheme the app has.
-    `<style>:root{color-scheme:light dark;background:transparent}</style><title>${title}</title><defs>${defs}</defs>${back}${groups}${blink}${bubble}</svg>`
+    `<style>:root{color-scheme:light dark;background:transparent}</style><title>${title}</title><defs>${defs}</defs>${pace}</svg>`
   )
 }
 
