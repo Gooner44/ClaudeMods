@@ -3,13 +3,15 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { BoardAgent, BoardCard } from '../types'
 import type { Bubble } from './board'
-import { DEMO_MS, ago, asText, beneath, bubbleOf, demoAgents, describe, desktopMeta, idleLine, isPrompt, liveCards, replyOf, roster, signature, summary, taskOf, verbOf } from './board'
+import { DEMO_MS, ago, asText, beneath, bubbleOf, demoAgents, describe, desktopMeta, idleLine, isPrompt, liveCards, ownerOf, replyOf, roster, signature, summary, taskOf, verbOf } from './board'
 import { SMALL_H, SMALL_W, SPRITE_COLUMNS, SPRITE_ROWS, SVG_H, SVG_W, cells, dimmed, frameFor, hex, modelColor, modelName, svgClawd } from './sprite'
 
 // Every session on this PC writes its card to ~/.claude/staff-board/<session id>.json and reads
 // everyone else's, so Claude sees what Aesop is doing and the reverse; background jobs
 // (claude-job.js runs) write theirs too. CLAUDE_STAFF, set by sessions-start.cmd and
-// claude-job.js, names the session; a desktop-app session takes the title the person gave it.
+// claude-job.js, names the session, as does ~/.claude/session-owners.json (written by /be, so a
+// desktop session that became Aesop is Aesop on the band); otherwise a desktop-app session takes
+// the title the person gave it.
 // The band shows the staff, named sessions and what they spawned, one compact tile each: a
 // little Clawd in its model's colour, glowing with its effort, its name beside it and its work
 // beneath. The agents a session runs are smaller figures after it, pacing while they work, with
@@ -40,7 +42,10 @@ const WORKING = new Set(['pending', 'running'])
 let dir = ''
 let file = ''
 let card: BoardCard | null = null
+let home = ''
 let staffName = ''
+// CLAUDE_STAFF was set: the name is fixed for the session's life. Otherwise session-owners.json may name it later (/be).
+let staffFromEnv = false
 let isDirty = false
 let lastWrite = 0
 let lastRead = ''
@@ -112,14 +117,25 @@ async function readOthers($: EngineInterface) {
 const dirs = async ($: EngineInterface, path: string) =>
   (await $.fs.list(path).catch(() => [])).filter(f => f.kind === 'dir').map(f => `${path}/${f.name}`)
 
-// Where the desktop app keeps this session's record (claude-code-sessions/<account>/<org>/local_*.json),
-// under the MSIX package's folder or the plain install's; '' when it keeps none (a terminal session).
+// The staff name be.js recorded for this session in ~/.claude/session-owners.json, '' when none.
+async function readOwner($: EngineInterface) {
+  if (!card || staffFromEnv || !home) return
+  const name = ownerOf(await $.fs.read(`${home}/.claude/session-owners.json`).catch(() => ''), card.session)
+  if (!name || name === staffName) return
+  staffName = name
+  change({ name, staff: true })
+}
+
+// Where the desktop app keeps this session's record (claude-code-sessions/<account>/<org>/local_*.json):
+// since the 2026-10-22 app update under LOCALAPPDATA/Claude-Data/<package>/, before that under the MSIX
+// package's LocalCache or the plain install's APPDATA/Claude; '' when it keeps none (a terminal session).
 async function findMeta($: EngineInterface, session: string): Promise<string> {
   const slash = (p: string | undefined) => (p ?? '').replace(/\\/g, '/')
   const local = slash(await $.env.get('LOCALAPPDATA'))
   const roaming = slash(await $.env.get('APPDATA'))
   const roots: string[] = []
   if (local) {
+    for (const pkg of await dirs($, `${local}/Claude-Data`)) roots.push(`${pkg}/claude-code-sessions`)
     for (const pkg of await dirs($, `${local}/Packages`)) {
       if (/\/Claude_[^/]*$/.test(pkg)) roots.push(`${pkg}/LocalCache/Roaming/Claude/claude-code-sessions`)
     }
@@ -142,6 +158,7 @@ async function findMeta($: EngineInterface, session: string): Promise<string> {
 // The desktop app's title, parent and effort for this session, kept current (a rename shows).
 async function readMeta($: EngineInterface) {
   if (!card) return
+  await readOwner($)
   if (!metaPath) {
     if (metaScans >= META_SCANS) return
     metaScans += 1
@@ -217,12 +234,14 @@ const isUltra = (text: string) =>
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
-    const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME')) ?? ''
+    home = ((await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME')) ?? '').replace(/\\/g, '/')
     staffName = (await $.env.get('CLAUDE_STAFF')) ?? ''
+    staffFromEnv = !!staffName
     const task = await $.env.get('CLAUDE_TASK')
     const session = await $.session.id()
+    if (!staffName) staffName = ownerOf(await $.fs.read(`${home}/.claude/session-owners.json`).catch(() => ''), session)
     const now = await $.clock.now()
-    dir = `${home.replace(/\\/g, '/')}/.claude/staff-board`
+    dir = `${home}/.claude/staff-board`
     file = `${dir}/${session}.json`
     card = {
       session,

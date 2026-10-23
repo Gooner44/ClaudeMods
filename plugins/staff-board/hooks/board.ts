@@ -205,6 +205,17 @@ export function roster(others: BoardCard[], me: BoardCard | null): BoardCard[] {
   return kept.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
 }
 
+// The staff name recorded for a session in ~/.claude/session-owners.json ({ sessions: { <id>: { name } } },
+// written by be.js when a session takes on a staff member), '' when the file or the entry is missing.
+export function ownerOf(json: string, session: string): string {
+  try {
+    const j = JSON.parse(json) as { sessions?: Record<string, { name?: string }> }
+    return j.sessions?.[session]?.name?.trim() || ''
+  } catch {
+    return ''
+  }
+}
+
 // What the desktop app keeps about one of its sessions (claude-code-sessions/…/local_*.json),
 // as far as the board needs it; null when the file is someone else's or unreadable.
 export type DesktopMeta = { desktopId: string; title?: string; isNamed: boolean; spawnedFrom?: string; effort?: string; focusedAt?: number }

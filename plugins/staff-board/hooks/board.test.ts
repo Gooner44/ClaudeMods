@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BoardCard } from '../types'
-import { FADE_MS, asText, sawReply, beneath, bubbleOf, demoAgents, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, replyOf, roster, summary, taskOf, verbOf } from './board'
+import { FADE_MS, asText, sawReply, beneath, bubbleOf, demoAgents, describe, desktopMeta, idleLine, isPrompt, isYourTurn, liveCards, ownerOf, replyOf, roster, summary, taskOf, verbOf } from './board'
 
 const NOW = 1_800_000_000_000
 const card = (over: Partial<BoardCard>): BoardCard => ({
@@ -122,6 +122,15 @@ test('desktop metadata counts a title as named only when the app did not choose 
   expect(desktopMeta(meta({ title: 'Reload plugins', titleSource: 'auto' }), 's')?.isNamed).toBe(false)
   expect(desktopMeta(meta({ spawnedFrom: { sessionId: 'local_0' } }), 's')?.spawnedFrom).toBe('local_0')
   expect(desktopMeta(meta({}), 'other')).toBe(null)
+})
+
+test('session-owners.json names the session /be made a staff member', () => {
+  const owners = JSON.stringify({ sessions: { abc: { name: 'Aesop' }, def: { name: ' ' } } })
+  expect(ownerOf(owners, 'abc')).toBe('Aesop')
+  expect(ownerOf(owners, 'def')).toBe('')
+  expect(ownerOf(owners, 'zzz')).toBe('')
+  expect(ownerOf('', 'abc')).toBe('')
+  expect(ownerOf('not json', 'abc')).toBe('')
 })
 
 test('the bubble shows while the session had the last word, terminal or desktop', () => {

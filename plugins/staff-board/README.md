@@ -51,9 +51,10 @@ Posts the whole board as text: every session including jobs, its task, what it's
 
 A session's name on the board comes from, in order:
 1. the `CLAUDE_STAFF` environment variable (marks it a standing session, which comes first on the band)
-2. `CLAUDE_TASK`, for scripted jobs
-3. the title you gave it in the desktop app's sidebar (a rename shows within about 30 seconds)
-4. otherwise `Session` and the first four characters of its id
+2. the staff member recorded for the session in `~/.claude/session-owners.json` (the vault's `/be` writes it, so a session that became Aesop is Aesop on the band within about 10 seconds; also a standing session)
+3. `CLAUDE_TASK`, for scripted jobs
+4. the title you gave it in the desktop app's sidebar (a rename shows within about 30 seconds)
+5. otherwise `Session` and the first four characters of its id
 
 To start a named terminal session:
 
@@ -112,7 +113,8 @@ Then `/reload-plugins` in any open session. To remove it: `claude plugin uninsta
 
 ## Troubleshooting
 
-- **Only my own tile shows:** the other sessions aren't named. Set `CLAUDE_STAFF`, or rename them in the desktop app. `/staff` lists them either way.
+- **Only my own tile shows:** the other sessions aren't named. Set `CLAUDE_STAFF`, run `/be` in them, or rename them in the desktop app. `/staff` lists them either way.
+- **Desktop sessions show as "Session xxxx" after an app update:** the app may have moved where it keeps session records. 0.7.3 knows `%LOCALAPPDATA%\\Claude-Data\\<package>\\claude-code-sessions` (the 2026-10-22 update), the MSIX package's LocalCache and `%APPDATA%\\Claude`; if it moves again, add the root to `findMeta` in register.tsx.
 - **A closed session still shows:** it disappears 90 seconds after its last update.
 - **No band on the phone or in a desktop view of a terminal session:** Remote Control views draw no band. Use `/staff`.
 - **No glow:** the glow appears after the session's next model request.
